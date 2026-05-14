@@ -1,0 +1,29 @@
+world:
+  name: "mathgo_world"
+  area_size: 256
+  lobby_x: 0.5
+  lobby_y: 64.0
+  lobby_z: 0.5
+
+game:
+  countdown_seconds: 5
+  answer_result_effect_seconds: 1.5
+
+rules:
+  stage_clear:
+    initial_lives: 3
+    checkpoints: 5
+
+quiz:
+  enabled_types: [ADD, SUB, MUL, DIV, MIXED]
+  default_time_limit:
+    easy: 6
+    normal: 5
+    hard: 4
+  difficulty: NORMAL
+  allow_negative: false
+  allow_decimal: false
+
+track:
+  template_set: "default"
+  weighted_random: true
