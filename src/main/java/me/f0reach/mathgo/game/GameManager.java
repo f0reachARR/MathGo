@@ -19,7 +19,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +35,7 @@ public final class GameManager {
     private final QuestionProvider questionProvider;
     private final Map<UUID, GameSession> sessionsByPlayer = new HashMap<>();
     private final Map<UUID, GameLoop> loopsBySession = new HashMap<>();
+    private final Map<UUID, GameRule> preferredRules = new HashMap<>();
 
     public GameManager(MathGoPlugin plugin, MathGoConfig config) {
         this.plugin = plugin;
@@ -70,10 +70,25 @@ public final class GameManager {
             return false;
         }
         Area area = areaGrid.reserveNext();
-        GameSession session = new GameSession(player, PlayMode.SOLO, GameRule.STAGE_CLEAR, area, config.initialLives());
+        GameRule rule = preferredRules.getOrDefault(player.getUniqueId(), GameRule.STAGE_CLEAR);
+        int lives = rule == GameRule.SURVIVAL ? config.survivalInitialLives() : config.initialLives();
+        GameSession session = new GameSession(player, PlayMode.SOLO, rule, area, lives);
         sessionsByPlayer.put(player.getUniqueId(), session);
-        player.sendMessage(Component.text("MathGo セッションに参加しました。/mathgo start で開始します。",
-                NamedTextColor.GREEN));
+        player.sendMessage(Component.text("MathGo セッションに参加しました ("
+                + (rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア")
+                + ")。/mathgo start で開始します。", NamedTextColor.GREEN));
+        return true;
+    }
+
+    public boolean setRule(Player player, GameRule rule) {
+        if (sessionsByPlayer.containsKey(player.getUniqueId())) {
+            player.sendMessage(Component.text("セッション中はルールを変更できません。", NamedTextColor.YELLOW));
+            return false;
+        }
+        preferredRules.put(player.getUniqueId(), rule);
+        player.sendMessage(Component.text("次回参加時のルールを "
+                + (rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア")
+                + " に設定しました。", NamedTextColor.GREEN));
         return true;
     }
 
@@ -96,8 +111,11 @@ public final class GameManager {
         int baseY = (int) Math.round(config.lobbyY());
         Location areaOrigin = session.area().originAt(world, baseY).add(2, 0, 2);
         TrackBuilder builder = new TrackBuilder(library);
-        Track track = builder.buildStageClear(world, areaOrigin, Direction.EAST, config.checkpoints(),
-                config.weightedRandom());
+        Track track = (session.rule() == GameRule.SURVIVAL)
+                ? builder.buildSurvival(world, areaOrigin, Direction.EAST, config.survivalQuestions(),
+                        config.weightedRandom())
+                : builder.buildStageClear(world, areaOrigin, Direction.EAST, config.checkpoints(),
+                        config.weightedRandom());
         session.setTrack(track);
 
         Location board = track.startBoardLocation();

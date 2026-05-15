@@ -2,6 +2,7 @@ package me.f0reach.mathgo.game;
 
 import me.f0reach.mathgo.area.Area;
 import me.f0reach.mathgo.quiz.QuizQuestion;
+import me.f0reach.mathgo.track.Direction;
 import me.f0reach.mathgo.track.PlacedSegment;
 import me.f0reach.mathgo.track.Track;
 import net.kyori.adventure.bossbar.BossBar;
@@ -32,6 +33,7 @@ public final class GameSession {
     private long resultUntilMillis;
     private long countdownEndMillis;
     @Nullable private BossBar bossBar;
+    @Nullable private Direction lastMovingDirection;
 
     public GameSession(Player player, PlayMode mode, GameRule rule, Area area, int initialLives) {
         this.player = player;
@@ -86,4 +88,7 @@ public final class GameSession {
 
     @Nullable public BossBar bossBar() { return bossBar; }
     public void setBossBar(@Nullable BossBar bar) { this.bossBar = bar; }
+
+    @Nullable public Direction lastMovingDirection() { return lastMovingDirection; }
+    public void setLastMovingDirection(@Nullable Direction d) { this.lastMovingDirection = d; }
 }

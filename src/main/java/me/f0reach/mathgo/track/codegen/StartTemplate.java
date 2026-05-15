@@ -19,9 +19,11 @@ public final class StartTemplate implements SegmentTemplate {
     @Override public int weight() { return 1; }
 
     @Override
-    public PlacedSegment place(Location origin, Direction forward) {
+    public PlacedSegment place(Location entry, Direction forward) {
         List<Location> changed = new ArrayList<>();
-        TunnelBuilder.carve(origin, forward, LENGTH, Material.SMOOTH_STONE, Material.STONE_BRICKS, Material.RAIL, changed);
-        return new PlacedSegment(this, origin, forward, LENGTH, changed, null);
+        TunnelBuilder.carveStraight(entry, forward, LENGTH, Material.SMOOTH_STONE, Material.STONE_BRICKS,
+                Material.RAIL, changed);
+        Location exit = entry.clone().add(forward.dx() * LENGTH, 0, forward.dz() * LENGTH);
+        return new PlacedSegment(this, entry, forward, exit, forward, changed, null);
     }
 }

@@ -20,6 +20,8 @@ public final class MathGoConfig {
 
     private final int initialLives;
     private final int checkpoints;
+    private final int survivalInitialLives;
+    private final int survivalQuestions;
 
     private final Set<QuestionType> enabledTypes;
     private final int timeLimitEasy;
@@ -44,6 +46,8 @@ public final class MathGoConfig {
 
         this.initialLives = c.getInt("rules.stage_clear.initial_lives", 3);
         this.checkpoints = c.getInt("rules.stage_clear.checkpoints", 5);
+        this.survivalInitialLives = c.getInt("rules.survival.initial_lives", 3);
+        this.survivalQuestions = c.getInt("rules.survival.max_questions", 30);
 
         Set<QuestionType> types = EnumSet.noneOf(QuestionType.class);
         List<String> typeStrings = c.getStringList("quiz.enabled_types");
@@ -90,6 +94,8 @@ public final class MathGoConfig {
     public double answerResultEffectSeconds() { return answerResultEffectSeconds; }
     public int initialLives() { return initialLives; }
     public int checkpoints() { return checkpoints; }
+    public int survivalInitialLives() { return survivalInitialLives; }
+    public int survivalQuestions() { return survivalQuestions; }
     public Set<QuestionType> enabledTypes() { return enabledTypes; }
     public int timeLimitFor(Difficulty d) {
         return switch (d) {

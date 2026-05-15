@@ -16,12 +16,14 @@ public final class MoveStraightTemplate implements SegmentTemplate {
     @Override public String id() { return "move_straight_01"; }
     @Override public SegmentRole role() { return SegmentRole.MOVE; }
     @Override public int length() { return LENGTH; }
-    @Override public int weight() { return 1; }
+    @Override public int weight() { return 3; }
 
     @Override
-    public PlacedSegment place(Location origin, Direction forward) {
+    public PlacedSegment place(Location entry, Direction forward) {
         List<Location> changed = new ArrayList<>();
-        TunnelBuilder.carve(origin, forward, LENGTH, Material.STONE, Material.DEEPSLATE_BRICKS, Material.RAIL, changed);
-        return new PlacedSegment(this, origin, forward, LENGTH, changed, null);
+        TunnelBuilder.carveStraight(entry, forward, LENGTH, Material.STONE, Material.DEEPSLATE_BRICKS,
+                Material.RAIL, changed);
+        Location exit = entry.clone().add(forward.dx() * LENGTH, 0, forward.dz() * LENGTH);
+        return new PlacedSegment(this, entry, forward, exit, forward, changed, null);
     }
 }

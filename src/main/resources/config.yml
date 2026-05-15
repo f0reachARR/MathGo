@@ -13,6 +13,9 @@ rules:
   stage_clear:
     initial_lives: 3
     checkpoints: 5
+  survival:
+    initial_lives: 3
+    max_questions: 30
 
 quiz:
   enabled_types: [ADD, SUB, MUL, DIV, MIXED]

@@ -4,8 +4,10 @@ import me.f0reach.mathgo.MathGoPlugin;
 import me.f0reach.mathgo.config.MathGoConfig;
 import me.f0reach.mathgo.effect.CartShake;
 import me.f0reach.mathgo.effect.Effects;
+import me.f0reach.mathgo.quiz.Difficulty;
 import me.f0reach.mathgo.quiz.QuestionProvider;
 import me.f0reach.mathgo.quiz.QuizQuestion;
+import me.f0reach.mathgo.track.Direction;
 import me.f0reach.mathgo.track.PlacedSegment;
 import me.f0reach.mathgo.track.QuestionAnchors;
 import me.f0reach.mathgo.track.Track;
@@ -14,6 +16,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -72,6 +75,8 @@ public final class GameLoop extends BukkitRunnable {
                     Component.text("スタート！", NamedTextColor.GREEN),
                     Component.empty(),
                     Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200))));
+            Track track = session.track();
+            if (track != null) session.setLastMovingDirection(track.forward());
             session.setState(GameState.MOVING);
             return;
         }
@@ -93,12 +98,17 @@ public final class GameLoop extends BukkitRunnable {
             terminate();
             return;
         }
-        // Propel forward.
-        Vector v = track.forward().unitVector().multiply(FORWARD_SPEED);
+        // Determine forward direction: prefer the cart's current facing if moving on rails,
+        // otherwise fall back to the last known moving direction.
+        Direction dir = currentMovingDirection(cart);
+        if (dir != null) session.setLastMovingDirection(dir);
+        Direction effective = dir != null ? dir : session.lastMovingDirection();
+        if (effective == null) effective = track.forward();
+        Vector v = effective.unitVector().multiply(FORWARD_SPEED);
         cart.setMaxSpeed(0.6);
         cart.setVelocity(v);
 
-        // Detect arrival at next question stop or goal.
+        // Detect arrival at next question stop.
         if (session.nextQuestionIndex() < track.questionSegments().size()) {
             PlacedSegment next = track.questionSegments().get(session.nextQuestionIndex());
             QuestionAnchors anchors = next.questionAnchors();
@@ -110,14 +120,39 @@ public final class GameLoop extends BukkitRunnable {
                     return;
                 }
             }
-        } else {
-            // No more questions: check for goal location proximity.
-            Location goal = track.goalLocation();
+            return;
+        }
+        // No more questions: check for goal (stage clear) or end of track (survival).
+        Location goal = track.goalLocation();
+        if (goal != null) {
             Location loc = cart.getLocation();
             if (sameWorld(goal, loc) && loc.distanceSquared(goal) <= 1.2 * 1.2) {
                 finishClear();
             }
+        } else {
+            // Survival ran past the buffer: end as completion.
+            finishSurvivalCompletion();
         }
+    }
+
+    private Direction currentMovingDirection(Minecart cart) {
+        Vector v = cart.getVelocity();
+        if (v.lengthSquared() > 0.0025) {
+            if (Math.abs(v.getX()) > Math.abs(v.getZ())) {
+                return v.getX() > 0 ? Direction.EAST : Direction.WEST;
+            }
+            if (Math.abs(v.getZ()) > 1e-4) {
+                return v.getZ() > 0 ? Direction.SOUTH : Direction.NORTH;
+            }
+        }
+        BlockFace face = cart.getFacing();
+        return switch (face) {
+            case NORTH -> Direction.NORTH;
+            case SOUTH -> Direction.SOUTH;
+            case EAST -> Direction.EAST;
+            case WEST -> Direction.WEST;
+            default -> null;
+        };
     }
 
     private void enterAnswering(PlacedSegment segment) {
@@ -125,7 +160,11 @@ public final class GameLoop extends BukkitRunnable {
         if (cart == null) return;
         cart.setMaxSpeed(0);
         cart.setVelocity(new Vector(0, 0, 0));
-        QuizQuestion question = questionProvider.next(config.difficulty());
+        // Remember the direction we were moving so we can resume cleanly.
+        session.setLastMovingDirection(segment.entryDirection());
+
+        Difficulty difficulty = effectiveDifficulty();
+        QuizQuestion question = questionProvider.next(difficulty);
         session.setCurrentQuestion(question);
         session.setCurrentQuestionSegment(segment);
         long now = System.currentTimeMillis();
@@ -147,6 +186,16 @@ public final class GameLoop extends BukkitRunnable {
         player.sendMessage(Component.text("もんだい: " + question.displayText(), NamedTextColor.AQUA));
 
         session.setState(GameState.ANSWERING);
+    }
+
+    private Difficulty effectiveDifficulty() {
+        if (session.rule() != GameRule.SURVIVAL) {
+            return config.difficulty();
+        }
+        int progress = session.nextQuestionIndex();
+        if (progress < 5) return Difficulty.EASY;
+        if (progress < 15) return Difficulty.NORMAL;
+        return Difficulty.HARD;
     }
 
     private void tickAnswering(long now) {
@@ -219,13 +268,17 @@ public final class GameLoop extends BukkitRunnable {
             if (cart != null) CartShake.apply(cart);
             return;
         }
-        // Advance to next question
         session.advanceQuestionIndex();
         session.setCurrentQuestion(null);
         session.setCurrentQuestionSegment(null);
         Minecart cart = session.minecart();
         if (cart != null) {
             cart.setMaxSpeed(0.6);
+            // Kick the cart in the saved direction so it leaves the stop.
+            Direction d = session.lastMovingDirection();
+            if (d != null) {
+                cart.setVelocity(d.unitVector().multiply(FORWARD_SPEED));
+            }
         }
         session.setState(GameState.MOVING);
     }
@@ -234,8 +287,8 @@ public final class GameLoop extends BukkitRunnable {
         clearBossBar();
         Player player = session.player();
         Location anchor = currentAnchor();
-        Effects.gameOver(player, anchor);
-        long until = System.currentTimeMillis() + 3000L;
+        Effects.gameOver(plugin, player, anchor);
+        long until = System.currentTimeMillis() + 5000L;
         session.setResultUntilMillis(until);
         session.setState(GameState.GAMEOVER);
     }
@@ -252,7 +305,10 @@ public final class GameLoop extends BukkitRunnable {
             cart.setMaxSpeed(0);
             cart.setVelocity(new Vector(0, 0, 0));
         }
-        Effects.goalReached(session.player(), session.track() != null ? session.track().goalLocation() : session.player().getLocation());
+        Track track = session.track();
+        Location anchor = (track != null && track.goalLocation() != null)
+                ? track.goalLocation() : session.player().getLocation();
+        Effects.goalReached(session.player(), anchor);
         session.player().showTitle(Title.title(
                 Component.text("クリア！", NamedTextColor.GOLD),
                 Component.text("せいかい " + session.correctCount() + " / スコア " + session.score(),
@@ -260,7 +316,24 @@ public final class GameLoop extends BukkitRunnable {
                 Title.Times.times(Duration.ZERO, Duration.ofSeconds(3), Duration.ofMillis(500))));
         long until = System.currentTimeMillis() + 3000L;
         session.setResultUntilMillis(until);
-        session.setState(GameState.GAMEOVER); // Reuse GAMEOVER tick to wait then finalize.
+        session.setState(GameState.GAMEOVER);
+    }
+
+    private void finishSurvivalCompletion() {
+        Minecart cart = session.minecart();
+        if (cart != null) {
+            cart.setMaxSpeed(0);
+            cart.setVelocity(new Vector(0, 0, 0));
+        }
+        Effects.goalReached(session.player(), session.player().getLocation());
+        session.player().showTitle(Title.title(
+                Component.text("完走！", NamedTextColor.GOLD),
+                Component.text("せいかい " + session.correctCount() + " / スコア " + session.score(),
+                        NamedTextColor.YELLOW),
+                Title.Times.times(Duration.ZERO, Duration.ofSeconds(3), Duration.ofMillis(500))));
+        long until = System.currentTimeMillis() + 3000L;
+        session.setResultUntilMillis(until);
+        session.setState(GameState.GAMEOVER);
     }
 
     private Location currentAnchor() {

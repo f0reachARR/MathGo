@@ -21,16 +21,17 @@ public final class QuestionStopTemplate implements SegmentTemplate {
     @Override public int weight() { return 1; }
 
     @Override
-    public PlacedSegment place(Location origin, Direction forward) {
+    public PlacedSegment place(Location entry, Direction forward) {
         List<Location> changed = new ArrayList<>();
-        TunnelBuilder.carve(origin, forward, LENGTH, Material.POLISHED_BLACKSTONE, Material.POLISHED_BLACKSTONE_BRICKS,
-                Material.RAIL, changed);
-        Location stop = origin.clone().add(
+        TunnelBuilder.carveStraight(entry, forward, LENGTH, Material.POLISHED_BLACKSTONE,
+                Material.POLISHED_BLACKSTONE_BRICKS, Material.RAIL, changed);
+        Location stop = entry.clone().add(
                 forward.dx() * STOP_OFFSET + 0.5,
                 0.0625,
                 forward.dz() * STOP_OFFSET + 0.5);
         Location display = stop.clone().add(0, 2.0, 0);
         QuestionAnchors anchors = new QuestionAnchors(stop, display);
-        return new PlacedSegment(this, origin, forward, LENGTH, changed, anchors);
+        Location exit = entry.clone().add(forward.dx() * LENGTH, 0, forward.dz() * LENGTH);
+        return new PlacedSegment(this, entry, forward, exit, forward, changed, anchors);
     }
 }

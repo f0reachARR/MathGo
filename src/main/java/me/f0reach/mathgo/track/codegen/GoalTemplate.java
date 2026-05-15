@@ -20,17 +20,18 @@ public final class GoalTemplate implements SegmentTemplate {
     @Override public int weight() { return 1; }
 
     @Override
-    public PlacedSegment place(Location origin, Direction forward) {
+    public PlacedSegment place(Location entry, Direction forward) {
         List<Location> changed = new ArrayList<>();
-        TunnelBuilder.carve(origin, forward, LENGTH, Material.GOLD_BLOCK, Material.EMERALD_BLOCK, Material.RAIL, changed);
-        // End wall: place a barrier of emerald at the very end.
-        World world = origin.getWorld();
+        TunnelBuilder.carveStraight(entry, forward, LENGTH, Material.GOLD_BLOCK, Material.EMERALD_BLOCK,
+                Material.RAIL, changed);
+        World world = entry.getWorld();
         if (world != null) {
-            int ex = origin.getBlockX() + forward.dx() * (LENGTH - 1);
-            int ez = origin.getBlockZ() + forward.dz() * (LENGTH - 1);
-            int by = origin.getBlockY();
+            int ex = entry.getBlockX() + forward.dx() * (LENGTH - 1);
+            int ez = entry.getBlockZ() + forward.dz() * (LENGTH - 1);
+            int by = entry.getBlockY();
             TunnelBuilder.setBlock(world, ex, by + 1, ez, Material.SEA_LANTERN.createBlockData(), changed);
         }
-        return new PlacedSegment(this, origin, forward, LENGTH, changed, null);
+        Location exit = entry.clone().add(forward.dx() * LENGTH, 0, forward.dz() * LENGTH);
+        return new PlacedSegment(this, entry, forward, exit, forward, changed, null);
     }
 }

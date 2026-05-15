@@ -6,6 +6,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import me.f0reach.mathgo.MathGoPlugin;
 import me.f0reach.mathgo.game.GameManager;
+import me.f0reach.mathgo.game.GameRule;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -44,6 +45,28 @@ public final class MathGoCommand {
                     if (m != null) m.stop(p);
                     return Command.SINGLE_SUCCESS;
                 }))
+                .then(Commands.literal("rule")
+                        .then(Commands.literal("stage").executes(ctx -> {
+                            Player p = requirePlayer(ctx.getSource().getSender());
+                            if (p == null) return 0;
+                            GameManager m = plugin.gameManager();
+                            if (m != null) m.setRule(p, GameRule.STAGE_CLEAR);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                        .then(Commands.literal("stage_clear").executes(ctx -> {
+                            Player p = requirePlayer(ctx.getSource().getSender());
+                            if (p == null) return 0;
+                            GameManager m = plugin.gameManager();
+                            if (m != null) m.setRule(p, GameRule.STAGE_CLEAR);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                        .then(Commands.literal("survival").executes(ctx -> {
+                            Player p = requirePlayer(ctx.getSource().getSender());
+                            if (p == null) return 0;
+                            GameManager m = plugin.gameManager();
+                            if (m != null) m.setRule(p, GameRule.SURVIVAL);
+                            return Command.SINGLE_SUCCESS;
+                        })))
                 .then(Commands.literal("reload").executes(ctx -> {
                     plugin.reloadMathGo();
                     ctx.getSource().getSender().sendMessage(Component.text("MathGo: config reloaded.",
