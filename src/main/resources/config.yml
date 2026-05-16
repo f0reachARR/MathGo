@@ -30,3 +30,10 @@ quiz:
 track:
   template_set: "default"
   weighted_random: true
+
+# Where NBT templates are loaded into the world during the startup scan that extracts marker metadata.
+# This area must be far from any reserved game area; blocks here are placed and cleared per template.
+templates:
+  scratch_x: -100000
+  scratch_y: 64
+  scratch_z: -100000

@@ -8,55 +8,65 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Rail;
 
-import java.util.List;
-
 final class TunnelBuilder {
     private TunnelBuilder() {}
 
-    /** Carves a straight tunnel of `length` cells along `forward`, placing rails on the centerline and walls on both sides. */
-    static void carveStraight(Location origin, Direction forward, int length, Material floor, Material wall,
-                              Material rail, List<Location> changed) {
+    /**
+     * Carves a straight tunnel of {@code length} cells along {@code forward}, with {@code width} cells of
+     * cross-section perpendicular to forward (must be odd; e.g. 3 → 1 floor + 2 walls). Rails on centerline,
+     * floor cells fill the interior, wall columns line both edges.
+     */
+    static void carveStraight(Location origin, Direction forward, int length, int width, Material floor,
+                              Material wall, Material rail) {
         World world = origin.getWorld();
         if (world == null) return;
+        if (width < 3 || width % 2 == 0) {
+            throw new IllegalArgumentException("width must be odd and >= 3 (got " + width + ")");
+        }
         Direction right = forward.rotateRight();
+        int half = (width - 1) / 2;
         int baseY = origin.getBlockY();
         Rail.Shape straightShape = railStraightShape(forward);
         for (int f = 0; f < length; f++) {
-            int cx = origin.getBlockX() + forward.dx() * f;
-            int cz = origin.getBlockZ() + forward.dz() * f;
-            placeCorridorCell(world, cx, baseY, cz, floor, changed);
-            if (rail != null) {
-                placeRail(world, cx, baseY, cz, rail, straightShape, changed);
+            int fx = origin.getBlockX() + forward.dx() * f;
+            int fz = origin.getBlockZ() + forward.dz() * f;
+            for (int s = -half; s <= half; s++) {
+                int cx = fx + right.dx() * s;
+                int cz = fz + right.dz() * s;
+                if (Math.abs(s) == half) {
+                    placeWallColumn(world, cx, baseY, cz, wall);
+                } else {
+                    placeCorridorCell(world, cx, baseY, cz, floor);
+                }
             }
-            // Walls on both sides.
-            placeWallColumn(world, cx + right.dx(), baseY, cz + right.dz(), wall, changed);
-            placeWallColumn(world, cx - right.dx(), baseY, cz - right.dz(), wall, changed);
+            if (rail != null) {
+                placeRail(world, fx, baseY, fz, rail, straightShape);
+            }
         }
     }
 
     /** Carves an air corridor cell (floor + 3 air blocks). */
-    static void placeCorridorCell(World world, int x, int y, int z, Material floor, List<Location> changed) {
-        setBlock(world, x, y - 1, z, floor.createBlockData(), changed);
-        setBlock(world, x, y, z, Material.AIR.createBlockData(), changed);
-        setBlock(world, x, y + 1, z, Material.AIR.createBlockData(), changed);
-        setBlock(world, x, y + 2, z, Material.AIR.createBlockData(), changed);
+    static void placeCorridorCell(World world, int x, int y, int z, Material floor) {
+        setBlock(world, x, y - 1, z, floor.createBlockData());
+        setBlock(world, x, y, z, Material.AIR.createBlockData());
+        setBlock(world, x, y + 1, z, Material.AIR.createBlockData());
+        setBlock(world, x, y + 2, z, Material.AIR.createBlockData());
     }
 
     /** Places a wall column (rail level + head height). */
-    static void placeWallColumn(World world, int x, int y, int z, Material wall, List<Location> changed) {
-        setBlock(world, x, y - 1, z, wall.createBlockData(), changed);
-        setBlock(world, x, y, z, wall.createBlockData(), changed);
-        setBlock(world, x, y + 1, z, wall.createBlockData(), changed);
+    static void placeWallColumn(World world, int x, int y, int z, Material wall) {
+        setBlock(world, x, y - 1, z, wall.createBlockData());
+        setBlock(world, x, y, z, wall.createBlockData());
+        setBlock(world, x, y + 1, z, wall.createBlockData());
     }
 
-    static void placeRail(World world, int x, int y, int z, Material railMaterial, Rail.Shape shape,
-                          List<Location> changed) {
+    static void placeRail(World world, int x, int y, int z, Material railMaterial, Rail.Shape shape) {
         BlockData rd = railMaterial.createBlockData();
         if (rd instanceof Rail r) {
             r.setShape(shape);
             rd = r;
         }
-        setBlock(world, x, y, z, rd, changed);
+        setBlock(world, x, y, z, rd);
     }
 
     static Rail.Shape railStraightShape(Direction forward) {
@@ -76,10 +86,8 @@ final class TunnelBuilder {
         throw new IllegalArgumentException("Cannot form corner from " + a + " and " + b);
     }
 
-    static void setBlock(World world, int x, int y, int z, BlockData data, List<Location> changed) {
+    static void setBlock(World world, int x, int y, int z, BlockData data) {
         Block block = world.getBlockAt(x, y, z);
-        Location loc = new Location(world, x, y, z);
-        changed.add(loc);
         block.setBlockData(data, false);
     }
 }

@@ -7,9 +7,16 @@ public interface SegmentTemplate {
 
     SegmentRole role();
 
-    int length();
-
     int weight();
+
+    /**
+     * Bounding box of this template in template-local cell coordinates.
+     * Local frame: entry cell at (0,0,0), entry forward = +F axis, right-of-forward = +S axis, up = +Y.
+     */
+    LocalFootprint footprint();
+
+    /** Exit cell offset (relative to entry) and outgoing direction in template-local frame. */
+    LocalAnchor exit();
 
     PlacedSegment place(Location origin, Direction forward);
 }

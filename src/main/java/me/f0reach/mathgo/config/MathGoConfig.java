@@ -34,6 +34,10 @@ public final class MathGoConfig {
     private final String templateSet;
     private final boolean weightedRandom;
 
+    private final int scratchX;
+    private final int scratchY;
+    private final int scratchZ;
+
     private MathGoConfig(FileConfiguration c) {
         this.worldName = c.getString("world.name", "mathgo_world");
         this.areaSize = c.getInt("world.area_size", 256);
@@ -79,6 +83,10 @@ public final class MathGoConfig {
 
         this.templateSet = c.getString("track.template_set", "default");
         this.weightedRandom = c.getBoolean("track.weighted_random", true);
+
+        this.scratchX = c.getInt("templates.scratch_x", -100000);
+        this.scratchY = c.getInt("templates.scratch_y", 64);
+        this.scratchZ = c.getInt("templates.scratch_z", -100000);
     }
 
     public static MathGoConfig load(FileConfiguration configuration) {
@@ -109,4 +117,7 @@ public final class MathGoConfig {
     public boolean allowDecimal() { return allowDecimal; }
     public String templateSet() { return templateSet; }
     public boolean weightedRandom() { return weightedRandom; }
+    public int scratchX() { return scratchX; }
+    public int scratchY() { return scratchY; }
+    public int scratchZ() { return scratchZ; }
 }

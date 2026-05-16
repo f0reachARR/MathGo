@@ -40,8 +40,13 @@ public final class Track {
 
     public void cleanup() {
         for (PlacedSegment seg : segments) {
-            for (Location loc : seg.changedBlocks()) {
-                loc.getBlock().setType(Material.AIR, false);
+            WorldAABB box = seg.worldFootprint();
+            for (int x = box.minX(); x <= box.maxX(); x++) {
+                for (int y = box.minY(); y <= box.maxY(); y++) {
+                    for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                        world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                    }
+                }
             }
         }
     }

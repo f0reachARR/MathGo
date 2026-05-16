@@ -42,15 +42,26 @@ public final class GameManager {
         this.config = config;
         this.areaGrid = new AreaGrid(config.areaSize());
         this.library = new TemplateLibrary();
-        library.register(new StartTemplate());
-        library.register(new MoveStraightTemplate());
-        library.register(new QuestionStopTemplate());
-        library.register(new GoalTemplate());
+        registerBuiltInTemplates();
         this.questionProvider = new GeneratedQuestionProvider(
                 config.enabledTypes(),
                 config.timeLimitFor(me.f0reach.mathgo.quiz.Difficulty.EASY),
                 config.timeLimitFor(me.f0reach.mathgo.quiz.Difficulty.NORMAL),
                 config.timeLimitFor(me.f0reach.mathgo.quiz.Difficulty.HARD));
+    }
+
+    public TemplateLibrary library() { return library; }
+
+    public void resetLibraryToBuiltIns() {
+        library.clear();
+        registerBuiltInTemplates();
+    }
+
+    private void registerBuiltInTemplates() {
+        library.register(new StartTemplate());
+        library.register(new MoveStraightTemplate());
+        library.register(new QuestionStopTemplate());
+        library.register(new GoalTemplate());
     }
 
     @Nullable
@@ -112,10 +123,10 @@ public final class GameManager {
         Location areaOrigin = session.area().originAt(world, baseY).add(2, 0, 2);
         TrackBuilder builder = new TrackBuilder(library);
         Track track = (session.rule() == GameRule.SURVIVAL)
-                ? builder.buildSurvival(world, areaOrigin, Direction.EAST, config.survivalQuestions(),
-                        config.weightedRandom())
-                : builder.buildStageClear(world, areaOrigin, Direction.EAST, config.checkpoints(),
-                        config.weightedRandom());
+                ? builder.buildSurvival(world, session.area(), areaOrigin, Direction.EAST,
+                        config.survivalQuestions(), config.weightedRandom())
+                : builder.buildStageClear(world, session.area(), areaOrigin, Direction.EAST,
+                        config.checkpoints(), config.weightedRandom());
         session.setTrack(track);
 
         Location board = track.startBoardLocation();

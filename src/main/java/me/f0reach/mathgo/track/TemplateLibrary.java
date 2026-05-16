@@ -11,6 +11,10 @@ public final class TemplateLibrary {
         all.add(template);
     }
 
+    public void clear() {
+        all.clear();
+    }
+
     public SegmentTemplate pickFirst(SegmentRole role) {
         for (SegmentTemplate t : all) {
             if (t.role() == role) return t;
