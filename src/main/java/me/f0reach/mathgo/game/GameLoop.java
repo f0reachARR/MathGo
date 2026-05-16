@@ -16,7 +16,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
-import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -98,11 +97,12 @@ public final class GameLoop extends BukkitRunnable {
             terminate();
             return;
         }
-        // Determine forward direction: prefer the cart's current facing if moving on rails,
-        // otherwise fall back to the last known moving direction.
-        Direction dir = currentMovingDirection(cart);
+        // Update the known direction only from actual movement. A stationary cart's facing/yaw
+        // is unreliable right after spawn (it can resolve to the opposite cardinal), so we never
+        // trust facing as a direction source — that would reverse the launch direction.
+        Direction dir = directionFromVelocity(cart);
         if (dir != null) session.setLastMovingDirection(dir);
-        Direction effective = dir != null ? dir : session.lastMovingDirection();
+        Direction effective = session.lastMovingDirection();
         if (effective == null) effective = track.forward();
         Vector v = effective.unitVector().multiply(FORWARD_SPEED);
         cart.setMaxSpeed(0.6);
@@ -135,24 +135,16 @@ public final class GameLoop extends BukkitRunnable {
         }
     }
 
-    private Direction currentMovingDirection(Minecart cart) {
+    private Direction directionFromVelocity(Minecart cart) {
         Vector v = cart.getVelocity();
-        if (v.lengthSquared() > 0.0025) {
-            if (Math.abs(v.getX()) > Math.abs(v.getZ())) {
-                return v.getX() > 0 ? Direction.EAST : Direction.WEST;
-            }
-            if (Math.abs(v.getZ()) > 1e-4) {
-                return v.getZ() > 0 ? Direction.SOUTH : Direction.NORTH;
-            }
+        if (v.lengthSquared() <= 0.0025) return null;
+        if (Math.abs(v.getX()) > Math.abs(v.getZ())) {
+            return v.getX() > 0 ? Direction.EAST : Direction.WEST;
         }
-        BlockFace face = cart.getFacing();
-        return switch (face) {
-            case NORTH -> Direction.NORTH;
-            case SOUTH -> Direction.SOUTH;
-            case EAST -> Direction.EAST;
-            case WEST -> Direction.WEST;
-            default -> null;
-        };
+        if (Math.abs(v.getZ()) > 1e-4) {
+            return v.getZ() > 0 ? Direction.SOUTH : Direction.NORTH;
+        }
+        return null;
     }
 
     private void enterAnswering(PlacedSegment segment) {
