@@ -3,13 +3,19 @@ package me.f0reach.mathgo.track;
 import me.f0reach.mathgo.track.codegen.CurveTemplate;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class TrackBuilder {
     private static final double CURVE_PROBABILITY = 0.35;
+    /** Max same-direction curves in a row before forcing the opposite. */
+    private static final int MAX_SAME_TURN_STREAK = 2;
+    /** Max cumulative net rotation (in 90° units). ±2 = ±180°; never reaches ±360° loop closure. */
+    private static final int MAX_NET_ROTATION = 2;
 
     private final TemplateLibrary library;
 
@@ -58,15 +64,16 @@ public final class TrackBuilder {
     /** Places a stretch of MOVE segments. May insert one curve, then at least one straight to avoid back-to-back curves. */
     private void placeMoveStretch(List<PlacedSegment> placed, Cursor cursor, boolean weightedRandom) {
         ThreadLocalRandom rng = ThreadLocalRandom.current();
-        boolean insertedCurve = false;
         if (rng.nextDouble() < CURVE_PROBABILITY) {
-            CurveTemplate.Turn turn = rng.nextBoolean() ? CurveTemplate.Turn.RIGHT : CurveTemplate.Turn.LEFT;
-            SegmentTemplate curve = new CurveTemplate(turn);
-            PlacedSegment seg = curve.place(cursor.location.clone(), cursor.direction);
-            placed.add(seg);
-            cursor.location = seg.exitLocation();
-            cursor.direction = seg.exitDirection();
-            insertedCurve = true;
+            CurveTemplate.Turn turn = cursor.budget.chooseTurn(rng);
+            if (turn != null) {
+                SegmentTemplate curve = new CurveTemplate(turn);
+                PlacedSegment seg = curve.place(cursor.location.clone(), cursor.direction);
+                placed.add(seg);
+                cursor.location = seg.exitLocation();
+                cursor.direction = seg.exitDirection();
+                cursor.budget.record(turn);
+            }
         }
         // Always at least one straight MOVE after a curve to give space and break "curve-then-curve" patterns.
         SegmentTemplate move = weightedRandom ? library.pickWeighted(SegmentRole.MOVE) : library.pickFirst(SegmentRole.MOVE);
@@ -99,6 +106,37 @@ public final class TrackBuilder {
     private static final class Cursor {
         Location location;
         Direction direction;
+        final CurveBudget budget = new CurveBudget();
         Cursor(Location l, Direction d) { this.location = l; this.direction = d; }
+    }
+
+    /**
+     * Constrains curve selection so the track cannot close into a loop.
+     * Rule 1: at most {@link #MAX_SAME_TURN_STREAK} same-direction curves in a row.
+     * Rule 2: cumulative net rotation never exceeds ±{@link #MAX_NET_ROTATION} (90° units),
+     * keeping the path from reaching ±360° (= full loop).
+     */
+    private static final class CurveBudget {
+        int netRotation = 0;
+        int consecutiveSame = 0;
+        @Nullable CurveTemplate.Turn lastTurn = null;
+
+        @Nullable CurveTemplate.Turn chooseTurn(ThreadLocalRandom rng) {
+            EnumSet<CurveTemplate.Turn> allowed = EnumSet.allOf(CurveTemplate.Turn.class);
+            if (netRotation >= MAX_NET_ROTATION) allowed.remove(CurveTemplate.Turn.RIGHT);
+            if (netRotation <= -MAX_NET_ROTATION) allowed.remove(CurveTemplate.Turn.LEFT);
+            if (consecutiveSame >= MAX_SAME_TURN_STREAK && lastTurn != null) {
+                allowed.remove(lastTurn);
+            }
+            if (allowed.isEmpty()) return null;
+            if (allowed.size() == 1) return allowed.iterator().next();
+            return rng.nextBoolean() ? CurveTemplate.Turn.RIGHT : CurveTemplate.Turn.LEFT;
+        }
+
+        void record(CurveTemplate.Turn turn) {
+            consecutiveSame = (turn == lastTurn) ? consecutiveSame + 1 : 1;
+            lastTurn = turn;
+            netRotation += (turn == CurveTemplate.Turn.RIGHT) ? +1 : -1;
+        }
     }
 }
