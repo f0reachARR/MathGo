@@ -122,12 +122,25 @@ public final class GameManager {
         int baseY = (int) Math.round(config.lobbyY());
         Location areaOrigin = session.area().originAt(world, baseY).add(2, 0, 2);
         TrackBuilder builder = new TrackBuilder(library);
+        // Survival builds a tiny initial track (2 questions) and the director extends infinitely
+        // from there; the legacy config.survivalQuestions value is now ignored.
+        final int initialSurvivalQuestions = 2;
         Track track = (session.rule() == GameRule.SURVIVAL)
                 ? builder.buildSurvival(world, session.area(), areaOrigin, Direction.EAST,
-                        config.survivalQuestions(), config.weightedRandom())
+                        initialSurvivalQuestions, config.weightedRandom())
                 : builder.buildStageClear(world, session.area(), areaOrigin, Direction.EAST,
                         config.checkpoints(), config.weightedRandom());
         session.setTrack(track);
+
+        if (session.rule() == GameRule.SURVIVAL) {
+            // Resume the sliding-window generator from the end of the initial track.
+            var segs = track.segments();
+            var last = segs.get(segs.size() - 1);
+            SurvivalDirector director = new SurvivalDirector(plugin, session.area(), library, track,
+                    last.exitLocation(), last.exitDirection(), config.weightedRandom());
+            director.primeInitialLookahead();
+            session.setDirector(director);
+        }
 
         Location board = track.startBoardLocation();
         board.setYaw(Direction.EAST.yaw());

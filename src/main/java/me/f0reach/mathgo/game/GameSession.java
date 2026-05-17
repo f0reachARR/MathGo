@@ -34,6 +34,7 @@ public final class GameSession {
     private long countdownEndMillis;
     @Nullable private BossBar bossBar;
     @Nullable private Direction lastMovingDirection;
+    @Nullable private SurvivalDirector director;
 
     public GameSession(Player player, PlayMode mode, GameRule rule, Area area, int initialLives) {
         this.player = player;
@@ -91,4 +92,7 @@ public final class GameSession {
 
     @Nullable public Direction lastMovingDirection() { return lastMovingDirection; }
     public void setLastMovingDirection(@Nullable Direction d) { this.lastMovingDirection = d; }
+
+    @Nullable public SurvivalDirector director() { return director; }
+    public void setDirector(@Nullable SurvivalDirector director) { this.director = director; }
 }

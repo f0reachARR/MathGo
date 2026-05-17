@@ -159,6 +159,10 @@ public final class GameLoop extends BukkitRunnable {
         QuizQuestion question = questionProvider.next(difficulty);
         session.setCurrentQuestion(question);
         session.setCurrentQuestionSegment(segment);
+        SurvivalDirector director = session.director();
+        if (director != null) {
+            director.onQuestionEntered(segment);
+        }
         long now = System.currentTimeMillis();
         long deadline = now + (long) question.timeLimitSeconds() * 1000L;
         session.setAnswerDeadlineMillis(deadline);
