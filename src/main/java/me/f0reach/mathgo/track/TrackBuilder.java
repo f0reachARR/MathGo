@@ -85,22 +85,24 @@ public final class TrackBuilder {
     private boolean placeMoveStretchIfFits(List<PlacedSegment> placed, Cursor cursor, Area area,
                                             boolean weightedRandom) {
         ThreadLocalRandom rng = ThreadLocalRandom.current();
+        SegmentTemplate move = weightedRandom ? library.pickWeighted(SegmentRole.MOVE)
+                : library.pickFirst(SegmentRole.MOVE);
         if (rng.nextDouble() < CURVE_PROBABILITY) {
             CurveTemplate.Turn turn = cursor.budget.chooseTurn(rng);
             if (turn != null) {
                 SegmentTemplate curve = new CurveTemplate(turn);
-                if (fits(curve, cursor, area)) {
+                if (fits(curve, cursor, area)
+                        && fitsAfterCurve(curve, cursor, move, area)) {
                     PlacedSegment seg = curve.place(cursor.location.clone(), cursor.direction);
                     placed.add(seg);
                     cursor.location = seg.exitLocation();
                     cursor.direction = seg.exitDirection();
                     cursor.budget.record(turn);
                 }
-                // If the curve does not fit, silently skip it and place the straight only.
+                // If the curve (or the straight that follows it) does not fit, skip the curve
+                // and place a straight only at the original cursor.
             }
         }
-        SegmentTemplate move = weightedRandom ? library.pickWeighted(SegmentRole.MOVE)
-                : library.pickFirst(SegmentRole.MOVE);
         if (!fits(move, cursor, area)) {
             return false;
         }
@@ -109,6 +111,15 @@ public final class TrackBuilder {
         cursor.location = moveSeg.exitLocation();
         cursor.direction = moveSeg.exitDirection();
         return true;
+    }
+
+    /** Dry-run check: does {@code after} fit at the cursor that would result from placing {@code curve}? */
+    private static boolean fitsAfterCurve(SegmentTemplate curve, Cursor cursor, SegmentTemplate after, Area area) {
+        LocalAnchor anchor = curve.exit();
+        Location virtualEntry = anchor.toWorld(cursor.location, cursor.direction);
+        Direction virtualDir = anchor.worldOutDir(cursor.direction);
+        WorldAABB box = after.footprint().toWorldAabb(virtualEntry, virtualDir);
+        return area.contains(box);
     }
 
     private boolean placeRoleIfFits(List<PlacedSegment> placed, Cursor cursor, Area area, SegmentRole role,
