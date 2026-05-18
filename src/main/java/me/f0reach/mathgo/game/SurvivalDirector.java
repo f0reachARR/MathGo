@@ -20,8 +20,12 @@ import org.jetbrains.annotations.Nullable;
  * ones are appended at the front, so the cart can loop indefinitely.
  */
 public final class SurvivalDirector {
-    /** Target lookahead: how many questions to keep placed beyond the most recently entered one. */
-    private static final int LOOKAHEAD_QUESTIONS = 1;
+    /**
+     * Target lookahead: how many questions to keep placed beyond the most recently entered one.
+     * Sized so the player always sees a visible stretch of corridor ahead of the cart (each MOVE+QUESTION
+     * pair is ~14 cells, so 3 → ~40+ cells of corridor ahead).
+     */
+    private static final int LOOKAHEAD_QUESTIONS = 3;
     /**
      * Empirical estimate of forward cells consumed per (MOVE + QUESTION) pair, used to size the
      * loop side so the rectangle fits inside the area.
