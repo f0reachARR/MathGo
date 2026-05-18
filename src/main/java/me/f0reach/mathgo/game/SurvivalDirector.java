@@ -13,19 +13,22 @@ import me.f0reach.mathgo.track.codegen.CurveTemplate;
 import org.bukkit.Location;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
-import java.util.concurrent.ThreadLocalRandom;
-
 /**
- * Drives survival mode: maintains a sliding-window track by extending the front and pruning the back
- * as the player passes QUESTION zones. Generation respects the reserved {@link Area} and avoids
- * geometric overlap with currently-alive segments; loops over previously-cleaned ground are allowed.
+ * Drives survival mode with a circular (rectangular-loop) layout: the cart turns in a single fixed
+ * direction every {@code straightsPerSide} MOVE placements, tracing a perimeter that fits inside the
+ * reserved {@link Area}. As the player passes QUESTION zones, segments behind are pruned and new
+ * ones are appended at the front, so the cart can loop indefinitely.
  */
 public final class SurvivalDirector {
-    /** Try to keep at least this many questions placed beyond the most recently entered one. */
+    /** Target lookahead: how many questions to keep placed beyond the most recently entered one. */
     private static final int LOOKAHEAD_QUESTIONS = 1;
-    private static final double CURVE_PROBABILITY = 0.35;
-    private static final int MAX_SAME_TURN_STREAK = 2;
+    /**
+     * Empirical estimate of forward cells consumed per (MOVE + QUESTION) pair, used to size the
+     * loop side so the rectangle fits inside the area.
+     */
+    private static final int PAIR_FORWARD_CELLS = 14;
+    /** Extra margin reserved at the edges of the area to accommodate corner curves and walls. */
+    private static final int LOOP_MARGIN = 8;
 
     private final MathGoPlugin plugin;
     private final Area area;
@@ -35,7 +38,10 @@ public final class SurvivalDirector {
 
     private Location cursorLocation;
     private Direction cursorDirection;
-    private final CurveBudget budget = new CurveBudget();
+
+    private final CurveTemplate.Turn loopTurn;
+    private final int straightsPerSide;
+    private int straightsSinceCurve;
 
     @Nullable private PlacedSegment lastEnteredQuestion;
     private int placedQuestions;
@@ -52,6 +58,10 @@ public final class SurvivalDirector {
         this.cursorDirection = cursorDirection;
         this.weightedRandom = weightedRandom;
         this.placedQuestions = track.questionSegments().size();
+        // RIGHT is the correct direction given that TrackBuilder starts at the NW corner facing EAST:
+        // right turns route the cart inward (E→S→W→N→E), tracing the area's perimeter.
+        this.loopTurn = CurveTemplate.Turn.RIGHT;
+        this.straightsPerSide = Math.max(1, (area.size() - LOOP_MARGIN) / PAIR_FORWARD_CELLS);
     }
 
     public boolean isDeadEnd() { return deadEnd; }
@@ -95,36 +105,31 @@ public final class SurvivalDirector {
         return true;
     }
 
+    /**
+     * Places a corner curve (in the fixed {@link #loopTurn} direction) when the side quota is reached,
+     * followed by exactly one MOVE template. When the quota is not yet reached, places only a MOVE.
+     */
     private boolean tryAppendMoveStretch() {
-        ThreadLocalRandom rng = ThreadLocalRandom.current();
         SegmentTemplate move = weightedRandom ? library.pickWeighted(SegmentRole.MOVE)
                 : library.pickFirst(SegmentRole.MOVE);
-        // Save cursor in case we tentatively choose a curve that turns out not to fit.
-        Location savedLoc = cursorLocation.clone();
-        Direction savedDir = cursorDirection;
-        if (rng.nextDouble() < CURVE_PROBABILITY) {
-            CurveTemplate.Turn turn = budget.chooseTurn(rng);
-            if (turn != null) {
-                SegmentTemplate curve = new CurveTemplate(turn);
-                if (fits(curve) && fitsAfterCurve(curve, move)) {
-                    PlacedSegment seg = curve.place(cursorLocation.clone(), cursorDirection);
-                    track.appendSegment(seg);
-                    cursorLocation = seg.exitLocation();
-                    cursorDirection = seg.exitDirection();
-                    budget.record(turn);
-                }
+        if (straightsSinceCurve >= straightsPerSide) {
+            SegmentTemplate curve = new CurveTemplate(loopTurn);
+            if (fits(curve) && fitsAfterCurve(curve, move)) {
+                PlacedSegment curveSeg = curve.place(cursorLocation.clone(), cursorDirection);
+                track.appendSegment(curveSeg);
+                cursorLocation = curveSeg.exitLocation();
+                cursorDirection = curveSeg.exitDirection();
+                straightsSinceCurve = 0;
             }
+            // If the curve doesn't fit (geometry mismatch with custom templates / NBT segments),
+            // fall through and attempt a straight; the next call may succeed at the curve.
         }
-        if (!fits(move)) {
-            // Rollback (no curve was placed in the rejected branch; only commit nothing).
-            cursorLocation = savedLoc;
-            cursorDirection = savedDir;
-            return false;
-        }
-        PlacedSegment seg = move.place(cursorLocation.clone(), cursorDirection);
-        track.appendSegment(seg);
-        cursorLocation = seg.exitLocation();
-        cursorDirection = seg.exitDirection();
+        if (!fits(move)) return false;
+        PlacedSegment moveSeg = move.place(cursorLocation.clone(), cursorDirection);
+        track.appendSegment(moveSeg);
+        cursorLocation = moveSeg.exitLocation();
+        cursorDirection = moveSeg.exitDirection();
+        straightsSinceCurve++;
         return true;
     }
 
@@ -149,9 +154,6 @@ public final class SurvivalDirector {
         Direction virtualDir = curve.exit().worldOutDir(cursorDirection);
         WorldAABB box = after.footprint().toWorldAabb(virtualEntry, virtualDir);
         if (!area.contains(box)) return false;
-        // The candidate "after" sits past the curve we'd place, which itself doesn't exist yet —
-        // collision check against currently-alive segments (excluding the most recent, which would
-        // become the curve's predecessor) is sufficient because adjacent AABBs are non-overlapping.
         return !track.intersectsActive(box, lastActive());
     }
 
@@ -160,26 +162,5 @@ public final class SurvivalDirector {
         var segs = track.segments();
         if (segs.isEmpty()) return null;
         return segs.get(segs.size() - 1);
-    }
-
-    /** Survival curve budget: allows full rotation (loops are fine after cleanup) but caps same-direction streaks. */
-    private static final class CurveBudget {
-        int consecutiveSame = 0;
-        @Nullable CurveTemplate.Turn lastTurn = null;
-
-        @Nullable CurveTemplate.Turn chooseTurn(ThreadLocalRandom rng) {
-            EnumSet<CurveTemplate.Turn> allowed = EnumSet.allOf(CurveTemplate.Turn.class);
-            if (consecutiveSame >= MAX_SAME_TURN_STREAK && lastTurn != null) {
-                allowed.remove(lastTurn);
-            }
-            if (allowed.isEmpty()) return null;
-            if (allowed.size() == 1) return allowed.iterator().next();
-            return rng.nextBoolean() ? CurveTemplate.Turn.RIGHT : CurveTemplate.Turn.LEFT;
-        }
-
-        void record(CurveTemplate.Turn turn) {
-            consecutiveSame = (turn == lastTurn) ? consecutiveSame + 1 : 1;
-            lastTurn = turn;
-        }
     }
 }

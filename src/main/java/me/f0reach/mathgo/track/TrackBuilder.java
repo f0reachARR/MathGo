@@ -59,6 +59,21 @@ public final class TrackBuilder {
         return new Track(world, forward, startBoarding, goalCenter, placed);
     }
 
+    /**
+     * Builds a minimal survival starting track: just the START segment. The {@link
+     * me.f0reach.mathgo.game.SurvivalDirector} takes over and extends with the perimeter loop.
+     */
+    public Track buildSurvivalStartOnly(World world, Area area, Location areaOrigin, Direction forward,
+                                         boolean weightedRandom) {
+        List<PlacedSegment> placed = new ArrayList<>();
+        Cursor cursor = new Cursor(areaOrigin.clone(), forward);
+        if (!placeRoleIfFits(placed, cursor, area, SegmentRole.START, weightedRandom)) {
+            placeRoleForced(placed, cursor, SegmentRole.START, weightedRandom);
+        }
+        Location startBoarding = computeStartBoarding(placed.get(0));
+        return new Track(world, forward, startBoarding, null, placed);
+    }
+
     public Track buildSurvival(World world, Area area, Location areaOrigin, Direction forward, int questionsLimit,
                                boolean weightedRandom) {
         List<PlacedSegment> placed = new ArrayList<>();

@@ -122,12 +122,11 @@ public final class GameManager {
         int baseY = (int) Math.round(config.lobbyY());
         Location areaOrigin = session.area().originAt(world, baseY).add(2, 0, 2);
         TrackBuilder builder = new TrackBuilder(library);
-        // Survival builds a tiny initial track (2 questions) and the director extends infinitely
-        // from there; the legacy config.survivalQuestions value is now ignored.
-        final int initialSurvivalQuestions = 2;
+        // Survival builds only the START segment; the director extends the perimeter loop from there.
+        // The legacy config.survivalQuestions value is no longer used.
         Track track = (session.rule() == GameRule.SURVIVAL)
-                ? builder.buildSurvival(world, session.area(), areaOrigin, Direction.EAST,
-                        initialSurvivalQuestions, config.weightedRandom())
+                ? builder.buildSurvivalStartOnly(world, session.area(), areaOrigin, Direction.EAST,
+                        config.weightedRandom())
                 : builder.buildStageClear(world, session.area(), areaOrigin, Direction.EAST,
                         config.checkpoints(), config.weightedRandom());
         session.setTrack(track);
