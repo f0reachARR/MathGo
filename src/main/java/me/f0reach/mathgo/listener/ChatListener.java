@@ -6,8 +6,7 @@ import me.f0reach.mathgo.game.GameManager;
 import me.f0reach.mathgo.game.GameSession;
 import me.f0reach.mathgo.game.GameState;
 import me.f0reach.mathgo.quiz.AnswerJudge;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.f0reach.mathgo.ui.Messages;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -36,7 +35,7 @@ public final class ChatListener implements Listener {
         String raw = PlainTextComponentSerializer.plainText().serialize(event.message());
         OptionalLong parsed = AnswerJudge.parseInt(raw);
         if (parsed.isEmpty()) {
-            player.sendActionBar(Component.text("数値を入力してください", NamedTextColor.YELLOW));
+            player.sendActionBar(Messages.get("game.answer.invalid_number"));
             return;
         }
         long value = parsed.getAsLong();

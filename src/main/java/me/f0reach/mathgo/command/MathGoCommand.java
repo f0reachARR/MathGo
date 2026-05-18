@@ -13,12 +13,15 @@ import me.f0reach.mathgo.track.Direction;
 import me.f0reach.mathgo.track.SegmentRole;
 import me.f0reach.mathgo.track.template.TemplateAuthoringService;
 import me.f0reach.mathgo.track.template.TemplateDraft;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.f0reach.mathgo.ui.Messages;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BlockVector;
+
+import static me.f0reach.mathgo.ui.Messages.get;
+import static me.f0reach.mathgo.ui.Messages.n;
+import static me.f0reach.mathgo.ui.Messages.u;
 
 public final class MathGoCommand {
     private MathGoCommand() {}
@@ -77,8 +80,7 @@ public final class MathGoCommand {
                         })))
                 .then(Commands.literal("reload").executes(ctx -> {
                     plugin.reloadMathGo();
-                    ctx.getSource().getSender().sendMessage(Component.text("MathGo: config reloaded.",
-                            NamedTextColor.GREEN));
+                    ctx.getSource().getSender().sendMessage(get("command.reload_success"));
                     return Command.SINGLE_SUCCESS;
                 }))
                 .then(Commands.literal("top")
@@ -96,26 +98,25 @@ public final class MathGoCommand {
     private static int showTop(MathGoPlugin plugin, CommandSender sender, GameRule rule, int limit) {
         var repo = plugin.scoreRepository();
         if (repo == null) {
-            sender.sendMessage(Component.text("MathGo: database is not enabled.", NamedTextColor.RED));
+            sender.sendMessage(get("top.no_database"));
             return 0;
         }
-        sender.sendMessage(Component.text(
-                "TOP " + limit + " (" + (rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア") + ")",
-                NamedTextColor.GOLD));
+        sender.sendMessage(get("top.header", n("limit", limit), u("rule", ruleLabel(rule))));
         var future = repo.topAsync(rule, limit);
         me.f0reach.mathgo.db.ScoreRepository.onMain(plugin, future, list -> {
             if (list.isEmpty()) {
-                sender.sendMessage(Component.text("(まだ記録がありません)", NamedTextColor.GRAY));
+                sender.sendMessage(get("top.empty"));
                 return;
             }
             int rank = 1;
             for (var rec : list) {
-                Component line = Component.text(
-                        String.format("#%-2d %-16s  %5d点  %d問正解  最大コンボ %d  %ds",
-                                rank++, rec.playerName(), rec.score(), rec.correctCount(),
-                                rec.maxCombo(), rec.durationSeconds()),
-                        NamedTextColor.YELLOW);
-                sender.sendMessage(line);
+                sender.sendMessage(get("top.entry",
+                        n("rank", rank++),
+                        u("name", rec.playerName()),
+                        n("score", rec.score()),
+                        n("correct", rec.correctCount()),
+                        n("combo", rec.maxCombo()),
+                        n("duration", rec.durationSeconds())));
             }
         });
         return Command.SINGLE_SUCCESS;
@@ -129,8 +130,7 @@ public final class MathGoCommand {
                     if (p == null) return 0;
                     TemplateAuthoringService svc = plugin.templateAuthoringService();
                     p.getInventory().addItem(svc.createWand());
-                    p.sendMessage(Component.text("テンプレ設計者の杖を入手しました。",
-                            NamedTextColor.GREEN));
+                    p.sendMessage(get("template.wand.received"));
                     return Command.SINGLE_SUCCESS;
                 }))
                 .then(Commands.literal("pos1").executes(ctx -> setPos(plugin, ctx.getSource().getSender(), true)))
@@ -145,7 +145,7 @@ public final class MathGoCommand {
                     Player p = requirePlayer(ctx.getSource().getSender());
                     if (p == null) return 0;
                     plugin.templateAuthoringService().draftOf(p).clear();
-                    p.sendMessage(Component.text("draft をクリアしました。", NamedTextColor.GRAY));
+                    p.sendMessage(get("template.draft.cleared"));
                     return Command.SINGLE_SUCCESS;
                 }))
                 .then(Commands.literal("save")
@@ -161,8 +161,7 @@ public final class MathGoCommand {
                                                         IntegerArgumentType.getInteger(ctx, "weight")))))))
                 .then(Commands.literal("reload").executes(ctx -> {
                     plugin.reloadTemplates();
-                    ctx.getSource().getSender().sendMessage(Component.text("テンプレートを再ロードしました。",
-                            NamedTextColor.GREEN));
+                    ctx.getSource().getSender().sendMessage(get("template.reload_success"));
                     return Command.SINGLE_SUCCESS;
                 }));
     }
@@ -174,9 +173,11 @@ public final class MathGoCommand {
         TemplateDraft draft = plugin.templateAuthoringService().draftOf(p);
         if (isPos1) draft.setPos1(loc);
         else draft.setPos2(loc);
-        p.sendMessage(Component.text((isPos1 ? "pos1" : "pos2") + ": ("
-                + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ() + ")",
-                NamedTextColor.AQUA));
+        p.sendMessage(get("template.pos_set",
+                u("label", isPos1 ? "pos1" : "pos2"),
+                n("x", loc.getBlockX()),
+                n("y", loc.getBlockY()),
+                n("z", loc.getBlockZ())));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -189,9 +190,12 @@ public final class MathGoCommand {
         TemplateDraft draft = plugin.templateAuthoringService().draftOf(p);
         if (isEntry) draft.setEntry(v, facing);
         else draft.setExit(v, facing);
-        p.sendMessage(Component.text((isEntry ? "entry" : "exit") + ": ("
-                + v.getBlockX() + ", " + v.getBlockY() + ", " + v.getBlockZ() + ") facing " + facing,
-                NamedTextColor.AQUA));
+        p.sendMessage(get("template.entry_exit_set",
+                u("label", isEntry ? "entry" : "exit"),
+                n("x", v.getBlockX()),
+                n("y", v.getBlockY()),
+                n("z", v.getBlockZ()),
+                u("facing", facing.name())));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -203,9 +207,11 @@ public final class MathGoCommand {
         TemplateDraft draft = plugin.templateAuthoringService().draftOf(p);
         if (isStop) draft.setStop(v);
         else draft.setDisplay(v);
-        p.sendMessage(Component.text("anchor " + (isStop ? "stop" : "display") + ": ("
-                + v.getBlockX() + ", " + v.getBlockY() + ", " + v.getBlockZ() + ")",
-                NamedTextColor.AQUA));
+        p.sendMessage(get("template.anchor_set",
+                u("label", isStop ? "stop" : "display"),
+                n("x", v.getBlockX()),
+                n("y", v.getBlockY()),
+                n("z", v.getBlockZ())));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -213,13 +219,17 @@ public final class MathGoCommand {
         Player p = requirePlayer(sender);
         if (p == null) return 0;
         TemplateDraft d = plugin.templateAuthoringService().draftOf(p);
-        p.sendMessage(Component.text("--- Template Draft ---", NamedTextColor.GOLD));
-        p.sendMessage(Component.text("pos1: " + d.pos1(), NamedTextColor.GRAY));
-        p.sendMessage(Component.text("pos2: " + d.pos2(), NamedTextColor.GRAY));
-        p.sendMessage(Component.text("entry: " + d.entry() + " " + d.entryFacing(), NamedTextColor.GRAY));
-        p.sendMessage(Component.text("exit: " + d.exit() + " " + d.exitFacing(), NamedTextColor.GRAY));
-        p.sendMessage(Component.text("stop: " + d.stop(), NamedTextColor.GRAY));
-        p.sendMessage(Component.text("display: " + d.display(), NamedTextColor.GRAY));
+        p.sendMessage(get("template.draft.header"));
+        p.sendMessage(get("template.draft.pos1", u("v", String.valueOf(d.pos1()))));
+        p.sendMessage(get("template.draft.pos2", u("v", String.valueOf(d.pos2()))));
+        p.sendMessage(get("template.draft.entry",
+                u("v", String.valueOf(d.entry())),
+                u("facing", String.valueOf(d.entryFacing()))));
+        p.sendMessage(get("template.draft.exit",
+                u("v", String.valueOf(d.exit())),
+                u("facing", String.valueOf(d.exitFacing()))));
+        p.sendMessage(get("template.draft.stop", u("v", String.valueOf(d.stop()))));
+        p.sendMessage(get("template.draft.display", u("v", String.valueOf(d.display()))));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -230,15 +240,22 @@ public final class MathGoCommand {
         try {
             role = SegmentRole.valueOf(roleName.toUpperCase());
         } catch (IllegalArgumentException e) {
-            p.sendMessage(Component.text("unknown role: " + roleName, NamedTextColor.RED));
+            p.sendMessage(get("template.save.unknown_role", u("name", roleName)));
             return 0;
         }
         var result = plugin.templateAuthoringService().save(p, role, id, weight);
-        p.sendMessage(Component.text(result.message(), result.ok() ? NamedTextColor.GREEN : NamedTextColor.RED));
+        String key = result.ok() ? "template.save.result_ok" : "template.save.result_err";
+        p.sendMessage(get(key, u("msg", result.message())));
         if (result.ok()) {
             plugin.reloadTemplates();
         }
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static String ruleLabel(GameRule rule) {
+        return Messages.getRaw(
+                rule == GameRule.SURVIVAL ? "game.rule_label.survival" : "game.rule_label.stage_clear",
+                rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア");
     }
 
     private static Direction yawToDirection(float yaw) {
@@ -252,7 +269,7 @@ public final class MathGoCommand {
 
     private static Player requirePlayer(CommandSender sender) {
         if (sender instanceof Player p) return p;
-        sender.sendMessage(Component.text("プレイヤー専用のコマンドです。", NamedTextColor.RED));
+        sender.sendMessage(get("command.player_only"));
         return null;
     }
 }

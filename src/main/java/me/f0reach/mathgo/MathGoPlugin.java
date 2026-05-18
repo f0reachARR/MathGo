@@ -12,6 +12,7 @@ import me.f0reach.mathgo.listener.VehicleListener;
 import me.f0reach.mathgo.placeholder.MathGoPlaceholders;
 import me.f0reach.mathgo.track.template.NbtTemplateLoader;
 import me.f0reach.mathgo.track.template.TemplateAuthoringService;
+import me.f0reach.mathgo.ui.Messages;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +30,7 @@ public class MathGoPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        Messages.load(this);
         this.mathGoConfig = MathGoConfig.load(getConfig());
         this.gameManager = new GameManager(this, mathGoConfig);
         this.templateAuthoringService = new TemplateAuthoringService(this);
@@ -91,6 +93,7 @@ public class MathGoPlugin extends JavaPlugin {
 
     public void reloadMathGo() {
         reloadConfig();
+        Messages.load(this);
         if (gameManager != null) {
             gameManager.shutdown();
         }

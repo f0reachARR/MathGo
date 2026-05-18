@@ -1,0 +1,87 @@
+# MathGo メッセージ定義
+#
+# すべての値は MiniMessage 形式 (https://docs.advntr.dev/minimessage/format.html)。
+# プレースホルダは <name> で記述する。コードからは TagResolver で値を差し込む。
+# 例: "<aqua>もんだい: <expr>" に対して u("expr", "1+2")
+#
+# 値を変更したら /mathgo reload で再読込される。
+
+command:
+  reload_success: "<green>MathGo: config reloaded."
+  player_only: "<red>プレイヤー専用のコマンドです。"
+
+game:
+  join:
+    success: "<green>MathGo セッションに参加しました (<rule>)。/mathgo start で開始します。"
+    already: "<yellow>すでに参加しています。"
+    world_missing: "<red>ワールド '<world>' が見つかりません。"
+  rule:
+    set: "<green>次回参加時のルールを <rule> に設定しました。"
+    cannot_change_in_session: "<yellow>セッション中はルールを変更できません。"
+  rule_label:
+    stage_clear: "ステージクリア"
+    survival: "サバイバル"
+  start:
+    not_joined: "<yellow>先に /mathgo join してください。"
+    already_running: "<yellow>すでに進行中です。"
+    world_missing: "<red>ワールドが見つかりません。"
+    success: "<green>カウントダウン開始！"
+  leave:
+    not_joined: "<yellow>参加していません。"
+    success: "<yellow>セッションを離脱しました。"
+  countdown:
+    go_title: "<green>スタート！"
+    timer_title: "<yellow><seconds>"
+    timer_subtitle: "<gray>もうすぐスタート…"
+  question:
+    title: "<aqua><expr>"
+    subtitle: "<gray>チャットで答えを入力！"
+    bossbar: "<gold>のこり <secs> 秒"
+    bossbar_critical: "<red>のこり <secs> 秒"
+    chat: "<aqua>もんだい: <expr>"
+  clear:
+    title: "<gold>クリア！"
+    subtitle: "<yellow>せいかい <correct> / スコア <score>"
+  survival_complete:
+    title: "<gold>完走！"
+    subtitle: "<yellow>せいかい <correct> / スコア <score>"
+  answer:
+    invalid_number: "<yellow>数値を入力してください"
+
+effect:
+  correct: "<green>せいかい！"
+  wrong: "<red>ざんねん…"
+  timeout: "<gold>じかんぎれ！"
+  game_over:
+    title: "<dark_red>ゲームオーバー"
+    subtitle: "<red>レールが崩れて燃え上がる…"
+    chat: "<dark_red>ゲームオーバー…"
+  goal_reached: "<gold>クリア！おめでとう！"
+
+top:
+  no_database: "<red>MathGo: database is not enabled."
+  header: "<gold>TOP <limit> (<rule>)"
+  empty: "<gray>(まだ記録がありません)"
+  entry: "<yellow>#<rank> <name> <score>点  <correct>問正解  最大コンボ <combo>  <duration>s"
+
+template:
+  wand:
+    name: "<gold>テンプレ設計者の杖"
+    received: "<green>テンプレ設計者の杖を入手しました。"
+  pos_set: "<aqua><label>: (<x>, <y>, <z>)"
+  entry_exit_set: "<aqua><label>: (<x>, <y>, <z>) facing <facing>"
+  anchor_set: "<aqua>anchor <label>: (<x>, <y>, <z>)"
+  draft:
+    header: "<gold>--- Template Draft ---"
+    pos1: "<gray>pos1: <v>"
+    pos2: "<gray>pos2: <v>"
+    entry: "<gray>entry: <v> <facing>"
+    exit: "<gray>exit: <v> <facing>"
+    stop: "<gray>stop: <v>"
+    display: "<gray>display: <v>"
+    cleared: "<gray>draft をクリアしました。"
+  save:
+    unknown_role: "<red>unknown role: <name>"
+    result_ok: "<green><msg>"
+    result_err: "<red><msg>"
+  reload_success: "<green>テンプレートを再ロードしました。"

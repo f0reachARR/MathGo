@@ -13,8 +13,11 @@ import me.f0reach.mathgo.track.QuestionAnchors;
 import me.f0reach.mathgo.track.Track;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
+
+import static me.f0reach.mathgo.ui.Messages.get;
+import static me.f0reach.mathgo.ui.Messages.n;
+import static me.f0reach.mathgo.ui.Messages.u;
 import org.bukkit.Location;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
@@ -71,7 +74,7 @@ public final class GameLoop extends BukkitRunnable {
         long remaining = session.countdownEndMillis() - now;
         if (remaining <= 0) {
             session.player().showTitle(Title.title(
-                    Component.text("スタート！", NamedTextColor.GREEN),
+                    get("game.countdown.go_title"),
                     Component.empty(),
                     Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200))));
             Track track = session.track();
@@ -81,8 +84,8 @@ public final class GameLoop extends BukkitRunnable {
         }
         int seconds = (int) Math.ceil(remaining / 1000.0);
         session.player().showTitle(Title.title(
-                Component.text(String.valueOf(seconds), NamedTextColor.YELLOW),
-                Component.text("もうすぐスタート…", NamedTextColor.GRAY),
+                get("game.countdown.timer_title", n("seconds", seconds)),
+                get("game.countdown.timer_subtitle"),
                 Title.Times.times(Duration.ZERO, Duration.ofMillis(1100), Duration.ZERO)));
     }
 
@@ -169,17 +172,17 @@ public final class GameLoop extends BukkitRunnable {
 
         Player player = session.player();
         player.showTitle(Title.title(
-                Component.text(question.displayText(), NamedTextColor.AQUA),
-                Component.text("チャットで答えを入力！", NamedTextColor.GRAY),
+                get("game.question.title", u("expr", question.displayText())),
+                get("game.question.subtitle"),
                 Title.Times.times(Duration.ZERO, Duration.ofSeconds(question.timeLimitSeconds() + 1L), Duration.ZERO)));
         BossBar bar = BossBar.bossBar(
-                Component.text("のこり " + question.timeLimitSeconds() + " 秒", NamedTextColor.GOLD),
+                get("game.question.bossbar", n("secs", question.timeLimitSeconds())),
                 1.0f,
                 BossBar.Color.YELLOW,
                 BossBar.Overlay.PROGRESS);
         session.setBossBar(bar);
         player.showBossBar(bar);
-        player.sendMessage(Component.text("もんだい: " + question.displayText(), NamedTextColor.AQUA));
+        player.sendMessage(get("game.question.chat", u("expr", question.displayText())));
 
         session.setState(GameState.ANSWERING);
     }
@@ -206,8 +209,8 @@ public final class GameLoop extends BukkitRunnable {
             float progress = Math.max(0f, Math.min(1f, remainingMs / (float) totalMs));
             bar.progress(progress);
             int secsLeft = (int) Math.max(0, Math.ceil(remainingMs / 1000.0));
-            bar.name(Component.text("のこり " + secsLeft + " 秒",
-                    secsLeft <= 1 ? NamedTextColor.RED : NamedTextColor.GOLD));
+            String key = secsLeft <= 1 ? "game.question.bossbar_critical" : "game.question.bossbar";
+            bar.name(get(key, n("secs", secsLeft)));
         }
         if (remainingMs <= 0) {
             timeout();
@@ -306,9 +309,10 @@ public final class GameLoop extends BukkitRunnable {
                 ? track.goalLocation() : session.player().getLocation();
         Effects.goalReached(session.player(), anchor);
         session.player().showTitle(Title.title(
-                Component.text("クリア！", NamedTextColor.GOLD),
-                Component.text("せいかい " + session.correctCount() + " / スコア " + session.score(),
-                        NamedTextColor.YELLOW),
+                get("game.clear.title"),
+                get("game.clear.subtitle",
+                        n("correct", session.correctCount()),
+                        n("score", session.score())),
                 Title.Times.times(Duration.ZERO, Duration.ofSeconds(3), Duration.ofMillis(500))));
         long until = System.currentTimeMillis() + 3000L;
         session.setResultUntilMillis(until);
@@ -323,9 +327,10 @@ public final class GameLoop extends BukkitRunnable {
         }
         Effects.goalReached(session.player(), session.player().getLocation());
         session.player().showTitle(Title.title(
-                Component.text("完走！", NamedTextColor.GOLD),
-                Component.text("せいかい " + session.correctCount() + " / スコア " + session.score(),
-                        NamedTextColor.YELLOW),
+                get("game.survival_complete.title"),
+                get("game.survival_complete.subtitle",
+                        n("correct", session.correctCount()),
+                        n("score", session.score())),
                 Title.Times.times(Duration.ZERO, Duration.ofSeconds(3), Duration.ofMillis(500))));
         long until = System.currentTimeMillis() + 3000L;
         session.setResultUntilMillis(until);

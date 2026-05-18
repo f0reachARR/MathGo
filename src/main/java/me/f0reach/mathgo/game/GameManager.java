@@ -14,8 +14,9 @@ import me.f0reach.mathgo.track.codegen.GoalTemplate;
 import me.f0reach.mathgo.track.codegen.MoveStraightTemplate;
 import me.f0reach.mathgo.track.codegen.QuestionStopTemplate;
 import me.f0reach.mathgo.track.codegen.StartTemplate;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.f0reach.mathgo.ui.Messages;
+import static me.f0reach.mathgo.ui.Messages.get;
+import static me.f0reach.mathgo.ui.Messages.u;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -71,13 +72,12 @@ public final class GameManager {
 
     public boolean join(Player player) {
         if (sessionsByPlayer.containsKey(player.getUniqueId())) {
-            player.sendMessage(Component.text("すでに参加しています。", NamedTextColor.YELLOW));
+            player.sendMessage(get("game.join.already"));
             return false;
         }
         World world = plugin.getServer().getWorld(config.worldName());
         if (world == null) {
-            player.sendMessage(Component.text("ワールド '" + config.worldName() + "' が見つかりません。",
-                    NamedTextColor.RED));
+            player.sendMessage(get("game.join.world_missing", u("world", config.worldName())));
             return false;
         }
         Area area = areaGrid.reserveNext();
@@ -85,37 +85,33 @@ public final class GameManager {
         int lives = rule == GameRule.SURVIVAL ? config.survivalInitialLives() : config.initialLives();
         GameSession session = new GameSession(player, PlayMode.SOLO, rule, area, lives);
         sessionsByPlayer.put(player.getUniqueId(), session);
-        player.sendMessage(Component.text("MathGo セッションに参加しました ("
-                + (rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア")
-                + ")。/mathgo start で開始します。", NamedTextColor.GREEN));
+        player.sendMessage(get("game.join.success", u("rule", ruleLabel(rule))));
         return true;
     }
 
     public boolean setRule(Player player, GameRule rule) {
         if (sessionsByPlayer.containsKey(player.getUniqueId())) {
-            player.sendMessage(Component.text("セッション中はルールを変更できません。", NamedTextColor.YELLOW));
+            player.sendMessage(get("game.rule.cannot_change_in_session"));
             return false;
         }
         preferredRules.put(player.getUniqueId(), rule);
-        player.sendMessage(Component.text("次回参加時のルールを "
-                + (rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア")
-                + " に設定しました。", NamedTextColor.GREEN));
+        player.sendMessage(get("game.rule.set", u("rule", ruleLabel(rule))));
         return true;
     }
 
     public boolean start(Player player) {
         GameSession session = sessionOf(player);
         if (session == null) {
-            player.sendMessage(Component.text("先に /mathgo join してください。", NamedTextColor.YELLOW));
+            player.sendMessage(get("game.start.not_joined"));
             return false;
         }
         if (session.state() != GameState.PREPARING) {
-            player.sendMessage(Component.text("すでに進行中です。", NamedTextColor.YELLOW));
+            player.sendMessage(get("game.start.already_running"));
             return false;
         }
         World world = plugin.getServer().getWorld(config.worldName());
         if (world == null) {
-            player.sendMessage(Component.text("ワールドが見つかりません。", NamedTextColor.RED));
+            player.sendMessage(get("game.start.world_missing"));
             return false;
         }
         // Build track within the reserved area.
@@ -161,19 +157,25 @@ public final class GameManager {
         loop.runTaskTimer(plugin, 1L, 1L);
         loopsBySession.put(session.sessionId(), loop);
 
-        player.sendMessage(Component.text("カウントダウン開始！", NamedTextColor.GREEN));
+        player.sendMessage(get("game.start.success"));
         return true;
     }
 
     public boolean leave(Player player) {
         GameSession session = sessionOf(player);
         if (session == null) {
-            player.sendMessage(Component.text("参加していません。", NamedTextColor.YELLOW));
+            player.sendMessage(get("game.leave.not_joined"));
             return false;
         }
         stopInternal(session, true);
-        player.sendMessage(Component.text("セッションを離脱しました。", NamedTextColor.YELLOW));
+        player.sendMessage(get("game.leave.success"));
         return true;
+    }
+
+    private static String ruleLabel(GameRule rule) {
+        return Messages.getRaw(
+                rule == GameRule.SURVIVAL ? "game.rule_label.survival" : "game.rule_label.stage_clear",
+                rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア");
     }
 
     public boolean stop(Player player) {

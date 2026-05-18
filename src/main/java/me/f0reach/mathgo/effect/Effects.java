@@ -1,9 +1,9 @@
 package me.f0reach.mathgo.effect;
 
 import me.f0reach.mathgo.MathGoPlugin;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
+
+import static me.f0reach.mathgo.ui.Messages.get;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -26,7 +26,7 @@ public final class Effects {
         w.spawnParticle(Particle.HAPPY_VILLAGER, anchor, 40, 0.8, 1.0, 0.8, 0);
         w.spawnParticle(Particle.END_ROD, anchor, 20, 0.4, 1.0, 0.4, 0.05);
         w.playSound(anchor, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.3f);
-        player.sendMessage(Component.text("せいかい！", NamedTextColor.GREEN));
+        player.sendMessage(get("effect.correct"));
     }
 
     public static void wrong(Player player, Location anchor) {
@@ -35,7 +35,7 @@ public final class Effects {
         w.spawnParticle(Particle.ANGRY_VILLAGER, anchor, 30, 0.6, 1.0, 0.6, 0);
         w.spawnParticle(Particle.SMOKE, anchor, 30, 0.5, 0.6, 0.5, 0.02);
         w.playSound(anchor, Sound.ENTITY_VILLAGER_NO, 1f, 0.9f);
-        player.sendMessage(Component.text("ざんねん…", NamedTextColor.RED));
+        player.sendMessage(get("effect.wrong"));
     }
 
     public static void timeout(Player player, Location anchor) {
@@ -43,7 +43,7 @@ public final class Effects {
         if (w == null) return;
         w.spawnParticle(Particle.LARGE_SMOKE, anchor, 30, 0.5, 0.5, 0.5, 0.02);
         w.playSound(anchor, Sound.BLOCK_BELL_RESONATE, 1f, 0.6f);
-        player.sendMessage(Component.text("じかんぎれ！", NamedTextColor.GOLD));
+        player.sendMessage(get("effect.timeout"));
     }
 
     public static void gameOver(MathGoPlugin plugin, Player player, Location anchor) {
@@ -55,10 +55,10 @@ public final class Effects {
         w.playSound(anchor, Sound.ENTITY_CREEPER_PRIMED, SoundCategory.MASTER, 1.2f, 0.7f);
         w.spawnParticle(Particle.SMOKE, anchor.clone().add(0, 1, 0), 40, 1.5, 1.0, 1.5, 0.02);
         player.showTitle(Title.title(
-                Component.text("ゲームオーバー", NamedTextColor.DARK_RED),
-                Component.text("レールが崩れて燃え上がる…", NamedTextColor.RED),
+                get("effect.game_over.title"),
+                get("effect.game_over.subtitle"),
                 Title.Times.times(Duration.ofMillis(100), Duration.ofSeconds(3), Duration.ofMillis(500))));
-        player.sendMessage(Component.text("ゲームオーバー…", NamedTextColor.DARK_RED));
+        player.sendMessage(get("effect.game_over.chat"));
 
         // Frame 8t (~0.4s): main blast — sound + explosion particle cluster + rail-debris falling blocks.
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> spawnMainBlast(w, anchor), 8L);
@@ -139,6 +139,6 @@ public final class Effects {
         if (w == null) return;
         w.playSound(anchor, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
         w.spawnParticle(Particle.FIREWORK, anchor, 80, 1.5, 1.5, 1.5, 0.2);
-        player.sendMessage(Component.text("クリア！おめでとう！", NamedTextColor.GOLD));
+        player.sendMessage(get("effect.goal_reached"));
     }
 }

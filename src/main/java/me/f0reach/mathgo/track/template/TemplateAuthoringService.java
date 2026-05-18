@@ -3,8 +3,7 @@ package me.f0reach.mathgo.track.template;
 import me.f0reach.mathgo.MathGoPlugin;
 import me.f0reach.mathgo.track.Direction;
 import me.f0reach.mathgo.track.SegmentRole;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.f0reach.mathgo.ui.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -47,7 +46,7 @@ public final class TemplateAuthoringService {
     public ItemStack createWand() {
         ItemStack stack = new ItemStack(Material.GOLDEN_AXE);
         ItemMeta meta = stack.getItemMeta();
-        meta.displayName(Component.text("テンプレ設計者の杖", NamedTextColor.GOLD));
+        meta.displayName(Messages.get("template.wand.name"));
         meta.getPersistentDataContainer().set(wandKey(), PersistentDataType.BYTE, (byte) 1);
         stack.setItemMeta(meta);
         return stack;
