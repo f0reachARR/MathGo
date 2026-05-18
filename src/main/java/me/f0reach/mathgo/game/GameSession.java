@@ -23,7 +23,9 @@ public final class GameSession {
     private int lives;
     private int score;
     private int combo;
+    private int maxCombo;
     private int correctCount;
+    private long startTimeMillis;
     @Nullable private Track track;
     @Nullable private Minecart minecart;
     @Nullable private QuizQuestion currentQuestion;
@@ -58,8 +60,19 @@ public final class GameSession {
     public int score() { return score; }
     public void addScore(int delta) { this.score += delta; }
     public int combo() { return combo; }
-    public void incrementCombo() { this.combo++; }
+    public void incrementCombo() {
+        this.combo++;
+        if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+    }
     public void resetCombo() { this.combo = 0; }
+    public int maxCombo() { return maxCombo; }
+
+    public long startTimeMillis() { return startTimeMillis; }
+    public void setStartTimeMillis(long t) { this.startTimeMillis = t; }
+    public int durationSeconds() {
+        if (startTimeMillis == 0L) return 0;
+        return (int) Math.max(0, (System.currentTimeMillis() - startTimeMillis) / 1000L);
+    }
     public int correctCount() { return correctCount; }
     public void incrementCorrectCount() { this.correctCount++; }
 

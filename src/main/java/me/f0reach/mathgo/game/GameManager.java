@@ -154,6 +154,7 @@ public final class GameManager {
         cart.addPassenger(player);
         session.setMinecart(cart);
         session.setCountdownEndMillis(System.currentTimeMillis() + (long) config.countdownSeconds() * 1000L);
+        session.setStartTimeMillis(System.currentTimeMillis());
         session.setState(GameState.COUNTDOWN);
 
         GameLoop loop = new GameLoop(plugin, this, session, config, questionProvider);
@@ -184,6 +185,19 @@ public final class GameManager {
     }
 
     private void stopInternal(GameSession session, boolean cancelLoop) {
+        // Record score (async) before any state mutation. Skip empty no-op sessions.
+        var repo = plugin.scoreRepository();
+        if (repo != null && (session.score() > 0 || session.correctCount() > 0)) {
+            Player p = session.player();
+            repo.insertAsync(me.f0reach.mathgo.db.ScoreRecord.forInsert(
+                    p.getUniqueId(),
+                    p.getName(),
+                    session.rule(),
+                    session.score(),
+                    session.correctCount(),
+                    session.maxCombo(),
+                    session.durationSeconds()));
+        }
         if (cancelLoop) {
             GameLoop loop = loopsBySession.remove(session.sessionId());
             if (loop != null) {

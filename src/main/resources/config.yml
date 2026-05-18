@@ -37,3 +37,15 @@ templates:
   scratch_x: -100000
   scratch_y: 64
   scratch_z: -100000
+
+# MySQL connection for score recording / leaderboard.
+# Set enabled=false to disable persistence (scores will be in-memory only and lost on restart).
+database:
+  enabled: false
+  host: localhost
+  port: 3306
+  database: mathgo
+  username: mathgo
+  password: changeme
+  table: mathgo_scores
+  pool_size: 4

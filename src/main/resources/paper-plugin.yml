@@ -5,4 +5,11 @@ api-version: "1.21"
 authors: [f0reachARR]
 description: Minecraft plugin for a quiz attraction
 
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true
+
 permissions:

@@ -38,6 +38,15 @@ public final class MathGoConfig {
     private final int scratchY;
     private final int scratchZ;
 
+    private final boolean databaseEnabled;
+    private final String dbHost;
+    private final int dbPort;
+    private final String dbDatabase;
+    private final String dbUsername;
+    private final String dbPassword;
+    private final String dbTable;
+    private final int dbPoolSize;
+
     private MathGoConfig(FileConfiguration c) {
         this.worldName = c.getString("world.name", "mathgo_world");
         this.areaSize = c.getInt("world.area_size", 256);
@@ -87,6 +96,15 @@ public final class MathGoConfig {
         this.scratchX = c.getInt("templates.scratch_x", -100000);
         this.scratchY = c.getInt("templates.scratch_y", 64);
         this.scratchZ = c.getInt("templates.scratch_z", -100000);
+
+        this.databaseEnabled = c.getBoolean("database.enabled", false);
+        this.dbHost = c.getString("database.host", "localhost");
+        this.dbPort = c.getInt("database.port", 3306);
+        this.dbDatabase = c.getString("database.database", "mathgo");
+        this.dbUsername = c.getString("database.username", "mathgo");
+        this.dbPassword = c.getString("database.password", "");
+        this.dbTable = c.getString("database.table", "mathgo_scores");
+        this.dbPoolSize = c.getInt("database.pool_size", 4);
     }
 
     public static MathGoConfig load(FileConfiguration configuration) {
@@ -120,4 +138,13 @@ public final class MathGoConfig {
     public int scratchX() { return scratchX; }
     public int scratchY() { return scratchY; }
     public int scratchZ() { return scratchZ; }
+
+    public boolean databaseEnabled() { return databaseEnabled; }
+    public String dbHost() { return dbHost; }
+    public int dbPort() { return dbPort; }
+    public String dbDatabase() { return dbDatabase; }
+    public String dbUsername() { return dbUsername; }
+    public String dbPassword() { return dbPassword; }
+    public String dbTable() { return dbTable; }
+    public int dbPoolSize() { return dbPoolSize; }
 }

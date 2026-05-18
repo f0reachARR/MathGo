@@ -3,14 +3,18 @@ package me.f0reach.mathgo;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import me.f0reach.mathgo.command.MathGoCommand;
 import me.f0reach.mathgo.config.MathGoConfig;
+import me.f0reach.mathgo.db.Database;
+import me.f0reach.mathgo.db.ScoreRepository;
 import me.f0reach.mathgo.game.GameManager;
 import me.f0reach.mathgo.listener.ChatListener;
 import me.f0reach.mathgo.listener.TemplateWandListener;
 import me.f0reach.mathgo.listener.VehicleListener;
+import me.f0reach.mathgo.placeholder.MathGoPlaceholders;
 import me.f0reach.mathgo.track.template.NbtTemplateLoader;
 import me.f0reach.mathgo.track.template.TemplateAuthoringService;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
@@ -18,6 +22,9 @@ public class MathGoPlugin extends JavaPlugin {
     private MathGoConfig mathGoConfig;
     private GameManager gameManager;
     private TemplateAuthoringService templateAuthoringService;
+    @Nullable private Database database;
+    @Nullable private ScoreRepository scoreRepository;
+    @Nullable private MathGoPlaceholders placeholders;
 
     @Override
     public void onEnable() {
@@ -25,6 +32,9 @@ public class MathGoPlugin extends JavaPlugin {
         this.mathGoConfig = MathGoConfig.load(getConfig());
         this.gameManager = new GameManager(this, mathGoConfig);
         this.templateAuthoringService = new TemplateAuthoringService(this);
+
+        openDatabaseIfEnabled();
+        registerPlaceholdersIfAvailable();
 
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new VehicleListener(this), this);
@@ -51,6 +61,15 @@ public class MathGoPlugin extends JavaPlugin {
         if (gameManager != null) {
             gameManager.shutdown();
         }
+        if (placeholders != null) {
+            placeholders.unregister();
+            placeholders = null;
+        }
+        if (database != null) {
+            database.close();
+            database = null;
+            scoreRepository = null;
+        }
     }
 
     public MathGoConfig mathGoConfig() {
@@ -65,13 +84,29 @@ public class MathGoPlugin extends JavaPlugin {
         return templateAuthoringService;
     }
 
+    @Nullable
+    public ScoreRepository scoreRepository() {
+        return scoreRepository;
+    }
+
     public void reloadMathGo() {
         reloadConfig();
         if (gameManager != null) {
             gameManager.shutdown();
         }
+        if (placeholders != null) {
+            placeholders.unregister();
+            placeholders = null;
+        }
+        if (database != null) {
+            database.close();
+            database = null;
+            scoreRepository = null;
+        }
         this.mathGoConfig = MathGoConfig.load(getConfig());
         this.gameManager = new GameManager(this, mathGoConfig);
+        openDatabaseIfEnabled();
+        registerPlaceholdersIfAvailable();
         World world = getServer().getWorld(mathGoConfig.worldName());
         if (world != null) loadNbtTemplates(world);
     }
@@ -90,5 +125,34 @@ public class MathGoPlugin extends JavaPlugin {
                 mathGoConfig.scratchX(), mathGoConfig.scratchY(), mathGoConfig.scratchZ(),
                 getLogger());
         loader.loadAll(gameManager.library());
+    }
+
+    private void openDatabaseIfEnabled() {
+        if (!mathGoConfig.databaseEnabled()) {
+            getLogger().info("MathGo: database is disabled (no scoreboard persistence).");
+            return;
+        }
+        try {
+            this.database = Database.open(mathGoConfig, getLogger());
+            this.scoreRepository = new ScoreRepository(this, database);
+        } catch (Exception e) {
+            getLogger().severe("MathGo: failed to open database — scores will not be saved: " + e.getMessage());
+            this.database = null;
+            this.scoreRepository = null;
+        }
+    }
+
+    private void registerPlaceholdersIfAvailable() {
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            return;
+        }
+        try {
+            this.placeholders = new MathGoPlaceholders(this);
+            placeholders.register();
+            getLogger().info("MathGo: registered PlaceholderAPI expansion (%mathgo_...%).");
+        } catch (Throwable t) {
+            getLogger().warning("MathGo: failed to register PlaceholderAPI expansion: " + t.getMessage());
+            this.placeholders = null;
+        }
     }
 }

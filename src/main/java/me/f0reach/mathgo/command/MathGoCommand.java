@@ -81,8 +81,44 @@ public final class MathGoCommand {
                             NamedTextColor.GREEN));
                     return Command.SINGLE_SUCCESS;
                 }))
+                .then(Commands.literal("top")
+                        .executes(ctx -> showTop(plugin, ctx.getSource().getSender(), GameRule.STAGE_CLEAR, 10))
+                        .then(Commands.literal("stage").executes(ctx ->
+                                showTop(plugin, ctx.getSource().getSender(), GameRule.STAGE_CLEAR, 10)))
+                        .then(Commands.literal("stage_clear").executes(ctx ->
+                                showTop(plugin, ctx.getSource().getSender(), GameRule.STAGE_CLEAR, 10)))
+                        .then(Commands.literal("survival").executes(ctx ->
+                                showTop(plugin, ctx.getSource().getSender(), GameRule.SURVIVAL, 10))))
                 .then(buildTemplateTree(plugin))
                 .build();
+    }
+
+    private static int showTop(MathGoPlugin plugin, CommandSender sender, GameRule rule, int limit) {
+        var repo = plugin.scoreRepository();
+        if (repo == null) {
+            sender.sendMessage(Component.text("MathGo: database is not enabled.", NamedTextColor.RED));
+            return 0;
+        }
+        sender.sendMessage(Component.text(
+                "TOP " + limit + " (" + (rule == GameRule.SURVIVAL ? "サバイバル" : "ステージクリア") + ")",
+                NamedTextColor.GOLD));
+        var future = repo.topAsync(rule, limit);
+        me.f0reach.mathgo.db.ScoreRepository.onMain(plugin, future, list -> {
+            if (list.isEmpty()) {
+                sender.sendMessage(Component.text("(まだ記録がありません)", NamedTextColor.GRAY));
+                return;
+            }
+            int rank = 1;
+            for (var rec : list) {
+                Component line = Component.text(
+                        String.format("#%-2d %-16s  %5d点  %d問正解  最大コンボ %d  %ds",
+                                rank++, rec.playerName(), rec.score(), rec.correctCount(),
+                                rec.maxCombo(), rec.durationSeconds()),
+                        NamedTextColor.YELLOW);
+                sender.sendMessage(line);
+            }
+        });
+        return Command.SINGLE_SUCCESS;
     }
 
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> buildTemplateTree(

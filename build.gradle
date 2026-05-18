@@ -14,6 +14,10 @@ repositories {
         url = "https://repo.papermc.io/repository/maven-public/"
     }
     maven {
+        name = "placeholderapi"
+        url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
+    }
+    maven {
         name = "jitpack"
         url = "https://jitpack.io"
     }
@@ -21,6 +25,9 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("me.clip:placeholderapi:2.11.6")
+    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("com.mysql:mysql-connector-j:8.4.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
 }
 
@@ -35,6 +42,10 @@ tasks {
 
     shadowJar {
         archiveClassifier.set("")
+        // Relocate shaded libraries to avoid collisions with other plugins on the same JVM.
+        relocate("com.zaxxer.hikari", "me.f0reach.mathgo.libs.hikari")
+        relocate("com.mysql", "me.f0reach.mathgo.libs.mysql")
+        relocate("org.slf4j", "me.f0reach.mathgo.libs.slf4j")
     }
 
     build {
