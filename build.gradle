@@ -18,6 +18,10 @@ repositories {
         url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
     }
     maven {
+        name = "enginehub"
+        url = "https://maven.enginehub.org/repo/"
+    }
+    maven {
         name = "jitpack"
         url = "https://jitpack.io"
     }
@@ -26,6 +30,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("com.sk89q.worldedit:worldedit-bukkit:7.3.0")
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("com.mysql:mysql-connector-j:8.4.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")

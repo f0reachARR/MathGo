@@ -6,6 +6,7 @@ import me.f0reach.mathgo.config.MathGoConfig;
 import me.f0reach.mathgo.db.Database;
 import me.f0reach.mathgo.db.ScoreRepository;
 import me.f0reach.mathgo.game.GameManager;
+import me.f0reach.mathgo.integration.WorldEditBridge;
 import me.f0reach.mathgo.listener.ChatListener;
 import me.f0reach.mathgo.listener.TemplateWandListener;
 import me.f0reach.mathgo.listener.VehicleListener;
@@ -26,6 +27,7 @@ public class MathGoPlugin extends JavaPlugin {
     @Nullable private Database database;
     @Nullable private ScoreRepository scoreRepository;
     @Nullable private MathGoPlaceholders placeholders;
+    private boolean worldEditAvailable;
 
     @Override
     public void onEnable() {
@@ -37,6 +39,7 @@ public class MathGoPlugin extends JavaPlugin {
 
         openDatabaseIfEnabled();
         registerPlaceholdersIfAvailable();
+        initializeWorldEditIfAvailable();
 
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new VehicleListener(this), this);
@@ -91,6 +94,10 @@ public class MathGoPlugin extends JavaPlugin {
         return scoreRepository;
     }
 
+    public boolean worldEditAvailable() {
+        return worldEditAvailable;
+    }
+
     public void reloadMathGo() {
         reloadConfig();
         Messages.load(this);
@@ -110,6 +117,7 @@ public class MathGoPlugin extends JavaPlugin {
         this.gameManager = new GameManager(this, mathGoConfig);
         openDatabaseIfEnabled();
         registerPlaceholdersIfAvailable();
+        initializeWorldEditIfAvailable();
         World world = getServer().getWorld(mathGoConfig.worldName());
         if (world != null) loadNbtTemplates(world);
     }
@@ -142,6 +150,20 @@ public class MathGoPlugin extends JavaPlugin {
             getLogger().severe("MathGo: failed to open database — scores will not be saved: " + e.getMessage());
             this.database = null;
             this.scoreRepository = null;
+        }
+    }
+
+    private void initializeWorldEditIfAvailable() {
+        if (getServer().getPluginManager().getPlugin("WorldEdit") == null) {
+            this.worldEditAvailable = false;
+            return;
+        }
+        try {
+            WorldEditBridge.initialize(this);
+            this.worldEditAvailable = true;
+        } catch (Throwable t) {
+            getLogger().warning("MathGo: WorldEdit present but bridge init failed: " + t.getMessage());
+            this.worldEditAvailable = false;
         }
     }
 

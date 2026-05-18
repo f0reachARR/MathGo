@@ -69,13 +69,12 @@ public final class TemplateAuthoringService {
     }
 
     /** Result of a save attempt: ok==true with file on success, false with reason otherwise. */
-    public record SaveResult(boolean ok, String message, File file) {}
+    public record SaveResult(boolean ok, String message, File file, String selectionSource) {
+        public SaveResult(boolean ok, String message, File file) { this(ok, message, file, ""); }
+    }
 
     public SaveResult save(Player player, SegmentRole role, String id, int weight) {
         TemplateDraft draft = draftOf(player);
-        if (draft.pos1() == null || draft.pos2() == null) {
-            return new SaveResult(false, "pos1/pos2 が未設定です。", null);
-        }
         if (draft.entry() == null || draft.entryFacing() == null) {
             return new SaveResult(false, "entry が未設定です。", null);
         }
@@ -85,18 +84,40 @@ public final class TemplateAuthoringService {
         if (role == SegmentRole.QUESTION && draft.stop() == null) {
             return new SaveResult(false, "question テンプレには anchor stop が必要です。", null);
         }
-        Location p1 = draft.pos1();
-        Location p2 = draft.pos2();
-        World world = p1.getWorld();
-        if (world == null || world != p2.getWorld()) {
-            return new SaveResult(false, "pos1 と pos2 のワールドが一致しません。", null);
+
+        // Resolve the cuboid corners — prefer WorldEdit selection if available, then fall back to draft.pos1/pos2.
+        int x1, y1, z1, x2, y2, z2;
+        World world;
+        String selectionSource;
+        var weSelection = plugin.worldEditAvailable()
+                ? me.f0reach.mathgo.integration.WorldEditBridge.getSelection(player) : null;
+        if (weSelection != null) {
+            world = player.getWorld();
+            x1 = weSelection.minX(); y1 = weSelection.minY(); z1 = weSelection.minZ();
+            x2 = weSelection.maxX(); y2 = weSelection.maxY(); z2 = weSelection.maxZ();
+            selectionSource = "WorldEdit";
+        } else {
+            if (draft.pos1() == null || draft.pos2() == null) {
+                return new SaveResult(false,
+                        plugin.worldEditAvailable()
+                                ? "WorldEdit 選択も pos1/pos2 も未設定です。"
+                                : "pos1/pos2 が未設定です。",
+                        null);
+            }
+            Location p1 = draft.pos1();
+            Location p2 = draft.pos2();
+            world = p1.getWorld();
+            if (world == null || world != p2.getWorld()) {
+                return new SaveResult(false, "pos1 と pos2 のワールドが一致しません。", null);
+            }
+            x1 = Math.min(p1.getBlockX(), p2.getBlockX());
+            y1 = Math.min(p1.getBlockY(), p2.getBlockY());
+            z1 = Math.min(p1.getBlockZ(), p2.getBlockZ());
+            x2 = Math.max(p1.getBlockX(), p2.getBlockX());
+            y2 = Math.max(p1.getBlockY(), p2.getBlockY());
+            z2 = Math.max(p1.getBlockZ(), p2.getBlockZ());
+            selectionSource = "draft";
         }
-        int x1 = Math.min(p1.getBlockX(), p2.getBlockX());
-        int y1 = Math.min(p1.getBlockY(), p2.getBlockY());
-        int z1 = Math.min(p1.getBlockZ(), p2.getBlockZ());
-        int x2 = Math.max(p1.getBlockX(), p2.getBlockX());
-        int y2 = Math.max(p1.getBlockY(), p2.getBlockY());
-        int z2 = Math.max(p1.getBlockZ(), p2.getBlockZ());
 
         // Validate marker positions are inside the selection.
         if (!within(draft.entry(), x1, y1, z1, x2, y2, z2)
@@ -139,7 +160,8 @@ public final class TemplateAuthoringService {
             Location c2 = new Location(world, x2, y2, z2);
             structure.fill(c1, c2, false);
             mgr.saveStructure(target, structure);
-            result = new SaveResult(true, "保存しました: " + target.getName(), target);
+            result = new SaveResult(true, "保存しました: " + target.getName() + " (" + selectionSource + ")",
+                    target, selectionSource);
         } catch (IOException e) {
             result = new SaveResult(false, "保存に失敗: " + e.getMessage(), null);
         } finally {
