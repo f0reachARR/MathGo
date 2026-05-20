@@ -37,4 +37,9 @@ public final class TemplateDraft {
         entry = exit = stop = display = null;
         entryFacing = exitFacing = null;
     }
+
+    public boolean isEmpty() {
+        return pos1 == null && pos2 == null
+                && entry == null && exit == null && stop == null && display == null;
+    }
 }

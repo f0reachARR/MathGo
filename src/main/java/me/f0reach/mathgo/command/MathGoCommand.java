@@ -193,7 +193,9 @@ public final class MathGoCommand {
         Location loc = p.getLocation();
         BlockVector v = new BlockVector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         Direction facing = yawToDirection(loc.getYaw());
-        TemplateDraft draft = plugin.templateAuthoringService().draftOf(p);
+        TemplateAuthoringService svc = plugin.templateAuthoringService();
+        TemplateDraft draft = svc.draftOf(p);
+        if (!enforceWithinSelection(p, svc, draft, v)) return 0;
         if (isEntry) draft.setEntry(v, facing);
         else draft.setExit(v, facing);
         p.sendMessage(get("template.entry_exit_set",
@@ -210,7 +212,9 @@ public final class MathGoCommand {
         if (p == null) return 0;
         Location loc = p.getLocation();
         BlockVector v = new BlockVector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-        TemplateDraft draft = plugin.templateAuthoringService().draftOf(p);
+        TemplateAuthoringService svc = plugin.templateAuthoringService();
+        TemplateDraft draft = svc.draftOf(p);
+        if (!enforceWithinSelection(p, svc, draft, v)) return 0;
         if (isStop) draft.setStop(v);
         else draft.setDisplay(v);
         p.sendMessage(get("template.anchor_set",
@@ -300,6 +304,20 @@ public final class MathGoCommand {
         if (y >= 135 && y < 225) return Direction.NORTH;
         if (y >= 225 && y < 315) return Direction.EAST;
         return Direction.SOUTH;
+    }
+
+    private static boolean enforceWithinSelection(Player p, TemplateAuthoringService svc,
+                                                  TemplateDraft draft, BlockVector v) {
+        TemplateAuthoringService.Selection sel = svc.selectionFor(p, draft);
+        if (sel == null) {
+            p.sendMessage(get("template.marker.selection_required"));
+            return false;
+        }
+        if (sel.world() != p.getWorld() || !sel.contains(v)) {
+            p.sendMessage(get("template.marker.outside_selection"));
+            return false;
+        }
+        return true;
     }
 
     private static Player requirePlayer(CommandSender sender) {

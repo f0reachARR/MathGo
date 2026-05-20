@@ -40,8 +40,53 @@ public final class TemplateAuthoringService {
         return drafts.computeIfAbsent(p.getUniqueId(), k -> new TemplateDraft());
     }
 
+    /** Returns the existing draft for {@code p} without creating one. */
+    @org.jetbrains.annotations.Nullable
+    public TemplateDraft peekDraft(Player p) {
+        return drafts.get(p.getUniqueId());
+    }
+
     public void clear(Player p) {
         drafts.remove(p.getUniqueId());
+    }
+
+    /** Unified cuboid selection (block-coord inclusive) sourced from WorldEdit or the draft. */
+    public record Selection(World world, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
+        public boolean contains(BlockVector v) {
+            return v.getBlockX() >= minX && v.getBlockX() <= maxX
+                    && v.getBlockY() >= minY && v.getBlockY() <= maxY
+                    && v.getBlockZ() >= minZ && v.getBlockZ() <= maxZ;
+        }
+    }
+
+    /**
+     * Resolves the player's current template selection — preferring a WorldEdit cuboid when present,
+     * falling back to the draft's {@code pos1/pos2}. Returns {@code null} when no selection is set or
+     * the two corners disagree on world.
+     */
+    @org.jetbrains.annotations.Nullable
+    public Selection selectionFor(Player player, TemplateDraft draft) {
+        var weSel = plugin.worldEditAvailable()
+                ? me.f0reach.mathgo.integration.WorldEditBridge.getSelection(player) : null;
+        if (weSel != null) {
+            return new Selection(player.getWorld(),
+                    weSel.minX(), weSel.minY(), weSel.minZ(),
+                    weSel.maxX(), weSel.maxY(), weSel.maxZ());
+        }
+        if (draft.pos1() != null && draft.pos2() != null) {
+            Location p1 = draft.pos1();
+            Location p2 = draft.pos2();
+            World w = p1.getWorld();
+            if (w == null || w != p2.getWorld()) return null;
+            return new Selection(w,
+                    Math.min(p1.getBlockX(), p2.getBlockX()),
+                    Math.min(p1.getBlockY(), p2.getBlockY()),
+                    Math.min(p1.getBlockZ(), p2.getBlockZ()),
+                    Math.max(p1.getBlockX(), p2.getBlockX()),
+                    Math.max(p1.getBlockY(), p2.getBlockY()),
+                    Math.max(p1.getBlockZ(), p2.getBlockZ()));
+        }
+        return null;
     }
 
     public ItemStack createWand() {
@@ -129,48 +174,32 @@ public final class TemplateAuthoringService {
         }
 
         // Resolve the cuboid corners — prefer WorldEdit selection if available, then fall back to draft.pos1/pos2.
-        int x1, y1, z1, x2, y2, z2;
-        World world;
-        String selectionSource;
-        var weSelection = plugin.worldEditAvailable()
-                ? me.f0reach.mathgo.integration.WorldEditBridge.getSelection(player) : null;
-        if (weSelection != null) {
-            world = player.getWorld();
-            x1 = weSelection.minX(); y1 = weSelection.minY(); z1 = weSelection.minZ();
-            x2 = weSelection.maxX(); y2 = weSelection.maxY(); z2 = weSelection.maxZ();
-            selectionSource = "WorldEdit";
-        } else {
-            if (draft.pos1() == null || draft.pos2() == null) {
-                return new SaveResult(false,
-                        plugin.worldEditAvailable()
-                                ? "WorldEdit 選択も pos1/pos2 も未設定です。"
-                                : "pos1/pos2 が未設定です。",
-                        null);
-            }
-            Location p1 = draft.pos1();
-            Location p2 = draft.pos2();
-            world = p1.getWorld();
-            if (world == null || world != p2.getWorld()) {
+        Selection selection = selectionFor(player, draft);
+        if (selection == null) {
+            if (draft.pos1() != null && draft.pos2() != null) {
                 return new SaveResult(false, "pos1 と pos2 のワールドが一致しません。", null);
             }
-            x1 = Math.min(p1.getBlockX(), p2.getBlockX());
-            y1 = Math.min(p1.getBlockY(), p2.getBlockY());
-            z1 = Math.min(p1.getBlockZ(), p2.getBlockZ());
-            x2 = Math.max(p1.getBlockX(), p2.getBlockX());
-            y2 = Math.max(p1.getBlockY(), p2.getBlockY());
-            z2 = Math.max(p1.getBlockZ(), p2.getBlockZ());
-            selectionSource = "draft";
+            return new SaveResult(false,
+                    plugin.worldEditAvailable()
+                            ? "WorldEdit 選択も pos1/pos2 も未設定です。"
+                            : "pos1/pos2 が未設定です。",
+                    null);
         }
+        World world = selection.world();
+        int x1 = selection.minX(), y1 = selection.minY(), z1 = selection.minZ();
+        int x2 = selection.maxX(), y2 = selection.maxY(), z2 = selection.maxZ();
+        boolean fromWorldEdit = plugin.worldEditAvailable()
+                && me.f0reach.mathgo.integration.WorldEditBridge.getSelection(player) != null;
+        String selectionSource = fromWorldEdit ? "WorldEdit" : "draft";
 
         // Validate marker positions are inside the selection.
-        if (!within(draft.entry(), x1, y1, z1, x2, y2, z2)
-                || !within(draft.exit(), x1, y1, z1, x2, y2, z2)) {
+        if (!selection.contains(draft.entry()) || !selection.contains(draft.exit())) {
             return new SaveResult(false, "entry/exit が選択範囲外です。", null);
         }
-        if (draft.stop() != null && !within(draft.stop(), x1, y1, z1, x2, y2, z2)) {
+        if (draft.stop() != null && !selection.contains(draft.stop())) {
             return new SaveResult(false, "stop が選択範囲外です。", null);
         }
-        if (draft.display() != null && !within(draft.display(), x1, y1, z1, x2, y2, z2)) {
+        if (draft.display() != null && !selection.contains(draft.display())) {
             return new SaveResult(false, "display が選択範囲外です。", null);
         }
 
@@ -228,9 +257,4 @@ public final class TemplateAuthoringService {
         b.setBlockData(marker.dataFacing(facing), false);
     }
 
-    private static boolean within(BlockVector v, int x1, int y1, int z1, int x2, int y2, int z2) {
-        return v.getBlockX() >= x1 && v.getBlockX() <= x2
-                && v.getBlockY() >= y1 && v.getBlockY() <= y2
-                && v.getBlockZ() >= z1 && v.getBlockZ() <= z2;
-    }
 }

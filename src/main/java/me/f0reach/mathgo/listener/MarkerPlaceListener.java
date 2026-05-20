@@ -44,6 +44,16 @@ public final class MarkerPlaceListener implements Listener {
         Direction facing = yawToDirection(player.getLocation().getYaw());
         TemplateDraft draft = svc.draftOf(player);
 
+        TemplateAuthoringService.Selection selection = svc.selectionFor(player, draft);
+        if (selection == null) {
+            player.sendMessage(get("template.marker.selection_required"));
+            return;
+        }
+        if (selection.world() != placedBlock.getWorld() || !selection.contains(pos)) {
+            player.sendMessage(get("template.marker.outside_selection"));
+            return;
+        }
+
         switch (marker) {
             case ENTRY -> {
                 draft.setEntry(pos, facing);

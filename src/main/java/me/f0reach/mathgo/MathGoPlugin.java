@@ -14,6 +14,7 @@ import me.f0reach.mathgo.listener.VehicleListener;
 import me.f0reach.mathgo.placeholder.MathGoPlaceholders;
 import me.f0reach.mathgo.track.template.NbtTemplateLoader;
 import me.f0reach.mathgo.track.template.TemplateAuthoringService;
+import me.f0reach.mathgo.track.template.TemplateVisualizer;
 import me.f0reach.mathgo.ui.Messages;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -25,6 +26,7 @@ public class MathGoPlugin extends JavaPlugin {
     private MathGoConfig mathGoConfig;
     private GameManager gameManager;
     private TemplateAuthoringService templateAuthoringService;
+    @Nullable private TemplateVisualizer templateVisualizer;
     @Nullable private Database database;
     @Nullable private ScoreRepository scoreRepository;
     @Nullable private MathGoPlaceholders placeholders;
@@ -47,6 +49,9 @@ public class MathGoPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TemplateWandListener(this), this);
         getServer().getPluginManager().registerEvents(new MarkerPlaceListener(this), this);
 
+        this.templateVisualizer = new TemplateVisualizer(this);
+        this.templateVisualizer.start();
+
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register(
                         MathGoCommand.build(this),
@@ -65,6 +70,10 @@ public class MathGoPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (templateVisualizer != null) {
+            templateVisualizer.stop();
+            templateVisualizer = null;
+        }
         if (gameManager != null) {
             gameManager.shutdown();
         }

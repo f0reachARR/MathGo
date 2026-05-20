@@ -70,6 +70,8 @@ template:
     received: "<green>テンプレ設計者の杖を入手しました。"
   marker:
     item_name: "<aqua>MathGo マーカー: <kind>"
+    outside_selection: "<red>テンプレートの選択範囲外には設置できません。"
+    selection_required: "<red>先に pos1/pos2 か WorldEdit で範囲を指定してください。"
   items:
     received: "<green><role> 用のマーカーを配布しました。設置して位置と向きを記録します。"
   pos_set: "<aqua><label>: (<x>, <y>, <z>)"
