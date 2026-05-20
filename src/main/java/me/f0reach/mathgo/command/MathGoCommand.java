@@ -133,6 +133,10 @@ public final class MathGoCommand {
                     p.sendMessage(get("template.wand.received"));
                     return Command.SINGLE_SUCCESS;
                 }))
+                .then(Commands.literal("items")
+                        .then(Commands.argument("role", StringArgumentType.word())
+                                .executes(ctx -> giveMarkerItems(plugin, ctx.getSource().getSender(),
+                                        StringArgumentType.getString(ctx, "role")))))
                 .then(Commands.literal("pos1").executes(ctx -> setPos(plugin, ctx.getSource().getSender(), true)))
                 .then(Commands.literal("pos2").executes(ctx -> setPos(plugin, ctx.getSource().getSender(), false)))
                 .then(Commands.literal("entry").executes(ctx -> setEntryOrExit(plugin, ctx.getSource().getSender(), true)))
@@ -249,6 +253,24 @@ public final class MathGoCommand {
         if (result.ok()) {
             plugin.reloadTemplates();
         }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int giveMarkerItems(MathGoPlugin plugin, CommandSender sender, String roleName) {
+        Player p = requirePlayer(sender);
+        if (p == null) return 0;
+        SegmentRole role;
+        try {
+            role = SegmentRole.valueOf(roleName.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            p.sendMessage(get("template.save.unknown_role", u("name", roleName)));
+            return 0;
+        }
+        TemplateAuthoringService svc = plugin.templateAuthoringService();
+        for (var marker : svc.markersFor(role)) {
+            p.getInventory().addItem(svc.createMarker(marker));
+        }
+        p.sendMessage(get("template.items.received", u("role", role.name().toLowerCase())));
         return Command.SINGLE_SUCCESS;
     }
 

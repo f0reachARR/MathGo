@@ -27,6 +27,7 @@ import java.util.UUID;
 
 public final class TemplateAuthoringService {
     public static final String WAND_KEY = "mathgo_template_wand";
+    public static final String MARKER_KEY = "mathgo_marker_kind";
 
     private final MathGoPlugin plugin;
     private final Map<UUID, TemplateDraft> drafts = new HashMap<>();
@@ -62,6 +63,48 @@ public final class TemplateAuthoringService {
 
     private NamespacedKey wandKey() {
         return new NamespacedKey(plugin, WAND_KEY);
+    }
+
+    private NamespacedKey markerKey() {
+        return new NamespacedKey(plugin, MARKER_KEY);
+    }
+
+    /** Marker items needed to fully describe a template of the given role. */
+    public java.util.List<MarkerBlocks> markersFor(SegmentRole role) {
+        if (role == SegmentRole.QUESTION) {
+            return java.util.List.of(MarkerBlocks.ENTRY, MarkerBlocks.EXIT,
+                    MarkerBlocks.QUESTION_STOP, MarkerBlocks.QUESTION_DISPLAY);
+        }
+        return java.util.List.of(MarkerBlocks.ENTRY, MarkerBlocks.EXIT);
+    }
+
+    /**
+     * Builds an inventory item that looks like the marker block but is tagged so it can be
+     * recognized on placement. Place the item in the world to register the corresponding anchor
+     * in the player's draft; the placement is cancelled by {@code MarkerPlaceListener}.
+     */
+    public ItemStack createMarker(MarkerBlocks marker) {
+        ItemStack stack = new ItemStack(marker.material());
+        ItemMeta meta = stack.getItemMeta();
+        meta.displayName(Messages.get("template.marker.item_name", Messages.u("kind", marker.name())));
+        meta.getPersistentDataContainer().set(markerKey(), PersistentDataType.STRING, marker.name());
+        stack.setItemMeta(meta);
+        return stack;
+    }
+
+    /** Returns the marker kind tagged on the item, or {@code null} if this is a regular item. */
+    @org.jetbrains.annotations.Nullable
+    public MarkerBlocks markerOf(@org.jetbrains.annotations.Nullable ItemStack stack) {
+        if (stack == null) return null;
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) return null;
+        String kind = meta.getPersistentDataContainer().get(markerKey(), PersistentDataType.STRING);
+        if (kind == null) return null;
+        try {
+            return MarkerBlocks.valueOf(kind);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public File templatesRoot() {

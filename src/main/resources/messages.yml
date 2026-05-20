@@ -68,6 +68,10 @@ template:
   wand:
     name: "<gold>テンプレ設計者の杖"
     received: "<green>テンプレ設計者の杖を入手しました。"
+  marker:
+    item_name: "<aqua>MathGo マーカー: <kind>"
+  items:
+    received: "<green><role> 用のマーカーを配布しました。設置して位置と向きを記録します。"
   pos_set: "<aqua><label>: (<x>, <y>, <z>)"
   entry_exit_set: "<aqua><label>: (<x>, <y>, <z>) facing <facing>"
   anchor_set: "<aqua>anchor <label>: (<x>, <y>, <z>)"

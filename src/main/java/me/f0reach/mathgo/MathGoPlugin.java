@@ -8,6 +8,7 @@ import me.f0reach.mathgo.db.ScoreRepository;
 import me.f0reach.mathgo.game.GameManager;
 import me.f0reach.mathgo.integration.WorldEditBridge;
 import me.f0reach.mathgo.listener.ChatListener;
+import me.f0reach.mathgo.listener.MarkerPlaceListener;
 import me.f0reach.mathgo.listener.TemplateWandListener;
 import me.f0reach.mathgo.listener.VehicleListener;
 import me.f0reach.mathgo.placeholder.MathGoPlaceholders;
@@ -44,6 +45,7 @@ public class MathGoPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new VehicleListener(this), this);
         getServer().getPluginManager().registerEvents(new TemplateWandListener(this), this);
+        getServer().getPluginManager().registerEvents(new MarkerPlaceListener(this), this);
 
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register(
