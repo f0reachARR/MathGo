@@ -135,6 +135,7 @@ public final class MathGoCommand {
                 }))
                 .then(Commands.literal("items")
                         .then(Commands.argument("role", StringArgumentType.word())
+                                .suggests(MathGoCommand::suggestRoles)
                                 .executes(ctx -> giveMarkerItems(plugin, ctx.getSource().getSender(),
                                         StringArgumentType.getString(ctx, "role")))))
                 .then(Commands.literal("pos1").executes(ctx -> setPos(plugin, ctx.getSource().getSender(), true)))
@@ -154,6 +155,7 @@ public final class MathGoCommand {
                 }))
                 .then(Commands.literal("save")
                         .then(Commands.argument("role", StringArgumentType.word())
+                                .suggests(MathGoCommand::suggestRoles)
                                 .then(Commands.argument("id", StringArgumentType.word())
                                         .executes(ctx -> doSave(plugin, ctx.getSource().getSender(),
                                                 StringArgumentType.getString(ctx, "role"),
@@ -254,6 +256,17 @@ public final class MathGoCommand {
             plugin.reloadTemplates();
         }
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestRoles(
+            com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+        String prefix = builder.getRemaining().toLowerCase();
+        for (SegmentRole r : SegmentRole.values()) {
+            String name = r.name().toLowerCase();
+            if (name.startsWith(prefix)) builder.suggest(name);
+        }
+        return builder.buildFuture();
     }
 
     private static int giveMarkerItems(MathGoPlugin plugin, CommandSender sender, String roleName) {
